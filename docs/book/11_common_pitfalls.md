@@ -48,4 +48,4 @@ When integrating the `Maatify\Verification` module, developers should avoid the 
 
 **Why it fails:** The domain strictly types its arguments using `IdentityTypeEnum` and `VerificationPurposeEnum`.
 
-**The Solution:** Always use the defined enum cases (e.g., `IdentityTypeEnum::Email`, `VerificationPurposeEnum::EmailVerification`). If you need new types, read the Extension Points chapter.
+**The Solution:** Always use the defined enum cases (e.g., `IdentityTypeEnum::User`, `VerificationPurposeEnum::EmailVerification`). If you need new types, read the Extension Points chapter.

@@ -21,7 +21,7 @@
 CREATE TABLE IF NOT EXISTS `verification_codes` (
                                                     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
-                                                    `identity_type` ENUM('user','email') NOT NULL,
+                                                    `identity_type` ENUM('admin','user','customer') NOT NULL,
                                                     `identity_id` VARCHAR(128) NOT NULL,
 
                                                     `purpose` VARCHAR(64) NOT NULL,

@@ -56,7 +56,7 @@ use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 
 // Inside your controller action
 $generated = $this->generator->generate(
-    IdentityTypeEnum::Email,
+    IdentityTypeEnum::User,
     'user@example.com',
     VerificationPurposeEnum::EmailVerification,
     $request->getAttribute(\MyFramework\Http\Request::class)?->getIpAddress() // Example IP tracking
@@ -82,7 +82,7 @@ use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 
 $result = $this->validator->validate(
-    IdentityTypeEnum::Email,
+    IdentityTypeEnum::User,
     'user@example.com',
     VerificationPurposeEnum::EmailVerification,
     '123456', // The plain code provided by the user
