@@ -126,7 +126,7 @@ class MagicLinkController
 The module is built to track the source IPs of both creation and usage. If your application uses a context object or middleware to resolve IPs, ensure you pass it down.
 
 ```php
-use Maatify\AdminKernel\Context\RequestContext;
+use MyFramework\Http\Request;
 use Psr\Http\Message\ServerRequestInterface;
 
 // Inside a controller/middleware

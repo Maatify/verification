@@ -59,7 +59,7 @@ $generated = $this->generator->generate(
     IdentityTypeEnum::Email,
     'user@example.com',
     VerificationPurposeEnum::EmailVerification,
-    $request->getAttribute(\Maatify\AdminKernel\Context\RequestContext::class)?->getIpAddress() // Example IP tracking
+    $request->getAttribute(\MyFramework\Http\Request::class)?->getIpAddress() // Example IP tracking
 );
 
 // $generated->plainCode contains the 6-digit plain text code (e.g., '123456')
@@ -86,7 +86,7 @@ $result = $this->validator->validate(
     'user@example.com',
     VerificationPurposeEnum::EmailVerification,
     '123456', // The plain code provided by the user
-    $request->getAttribute(\Maatify\AdminKernel\Context\RequestContext::class)?->getIpAddress() // Example IP tracking
+    $request->getAttribute(\MyFramework\Http\Request::class)?->getIpAddress() // Example IP tracking
 );
 
 if ($result->success) {
