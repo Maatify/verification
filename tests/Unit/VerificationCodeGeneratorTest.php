@@ -50,7 +50,7 @@ final class VerificationCodeGeneratorTest extends TestCase
         );
 
         $result = $generator->generate(
-            IdentityTypeEnum::User,
+            IdentityTypeEnum::Email,
             'user@example.com',
             VerificationPurposeEnum::EmailVerification
         );
