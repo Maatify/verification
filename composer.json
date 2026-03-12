@@ -1,0 +1,73 @@
+{
+  "name": "maatify/verification",
+  "description": "Framework-agnostic verification code component for managing OTPs and temporary verification codes.",
+  "type": "library",
+  "license": "MIT",
+
+  "require": {
+    "php": "^8.2",
+    "ext-pdo": "*",
+    "ext-json": "*",
+
+    "maatify/shared-common": "^1.0"
+  },
+
+  "require-dev": {
+    "php-di/php-di": "^7.0",
+    "slim/psr7": "^1.8",
+
+    "phpunit/phpunit": "^11.0",
+    "phpstan/phpstan": "^1.12",
+    "friendsofphp/php-cs-fixer": "^3.94"
+  },
+
+  "autoload": {
+    "psr-4": {
+      "Maatify\\Verification\\": "src/"
+    }
+  },
+
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true,
+    "platform": {
+      "php": "8.2.0"
+    }
+  },
+
+  "scripts": {
+    "test": "phpunit --colors=always",
+    "analyse": "phpstan analyse src tests --level=max",
+    "format": "php-cs-fixer fix"
+  },
+
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+
+  "keywords": [
+    "verification",
+    "otp",
+    "authentication",
+    "security",
+    "one-time-password",
+    "maatify"
+  ],
+
+  "authors": [
+    {
+      "name": "Maatify",
+      "email": "support@maatify.com"
+    }
+  ],
+
+  "support": {
+    "issues": "https://github.com/maatify/verification/issues",
+    "source": "https://github.com/maatify/verification"
+  }
+}
