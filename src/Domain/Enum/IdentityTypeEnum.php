@@ -7,5 +7,6 @@ namespace Maatify\Verification\Domain\Enum;
 enum IdentityTypeEnum: string
 {
     case Admin = 'admin';
-    case Email = 'email';
+    case User = 'user';
+    case Customer = 'customer';
 }

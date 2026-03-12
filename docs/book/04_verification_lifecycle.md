@@ -4,7 +4,7 @@ This chapter explains the strict business rules governing the lifecycle of a `Ve
 
 ## State Machine
 
-A verification code always exists in one of four mutually exclusive states defined by `VerificationCodeStatus`:
+A verification code always exists in one of three mutually exclusive states defined by `VerificationCodeStatus`:
 
 1.  **`ACTIVE`**: The code has been generated, its TTL (Time-To-Live) has not expired, and its failed attempts are below the maximum allowed.
 2.  **`USED`**: The code was successfully validated against its plain text counterpart. It can never be used again.
@@ -12,7 +12,6 @@ A verification code always exists in one of four mutually exclusive states defin
     *   **Time:** The current time surpasses `expiresAt`.
     *   **Brute-Force Protection:** The `attempts` count reaches `maxAttempts`.
     *   **Supersession:** A new code was generated for the same identity and purpose, instantly expiring the older code.
-4.  **`REVOKED`**: The code was explicitly revoked by an administrator or the system before it was used or expired.
 
 ## Lifecycle Events
 
