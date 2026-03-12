@@ -27,7 +27,7 @@ class EmailVerificationController
     {
         // 1. Generate the secure verification code (invalidates old ones)
         $generated = $this->generator->generate(
-            IdentityTypeEnum::Email,
+            IdentityTypeEnum::User,
             $email,
             VerificationPurposeEnum::EmailVerification,
             $clientIp
@@ -61,7 +61,7 @@ class EmailVerificationController
     {
         // 1. Validate the provided code against the repository (handles attempts/expiry)
         $result = $this->validator->validate(
-            IdentityTypeEnum::Email,
+            IdentityTypeEnum::User,
             $email,
             VerificationPurposeEnum::EmailVerification,
             $code,
@@ -107,12 +107,12 @@ class MagicLinkController
         }
 
         // 2. Extract the identity from the successful VerificationResult DTO
-        $identityType = $result->identityType; // e.g., IdentityTypeEnum::Email
+        $identityType = $result->identityType; // e.g., IdentityTypeEnum::User
         $identityId = $result->identityId;     // e.g., 'user@example.com'
         $purpose = $result->purpose;           // e.g., VerificationPurposeEnum::EmailVerification
 
         // 3. Process based on the retrieved context
-        if ($identityType === IdentityTypeEnum::Email && $purpose === VerificationPurposeEnum::EmailVerification) {
+        if ($identityType === IdentityTypeEnum::User && $purpose === VerificationPurposeEnum::EmailVerification) {
             $this->userRepository->markEmailAsVerified($identityId);
         }
 
@@ -126,7 +126,7 @@ class MagicLinkController
 The module is built to track the source IPs of both creation and usage. If your application uses a context object or middleware to resolve IPs, ensure you pass it down.
 
 ```php
-use Maatify\AdminKernel\Context\RequestContext;
+use MyFramework\Http\Request;
 use Psr\Http\Message\ServerRequestInterface;
 
 // Inside a controller/middleware

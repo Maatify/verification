@@ -16,7 +16,7 @@ readonly class VerificationCode
 {
     public function __construct(
         public int $id, // The unique database identifier (0 if unsaved)
-        public IdentityTypeEnum $identityType, // E.g., Email, Admin
+        public IdentityTypeEnum $identityType, // E.g., User, Customer
         public string $identityId, // The actual identifier (e.g., 'user@example.com')
         public VerificationPurposeEnum $purpose, // What the code is authorizing
         public string $codeHash, // The SHA-256 hash of the plain code
@@ -88,6 +88,6 @@ readonly class VerificationPolicy
 
 Strongly typed enumerations are used throughout the module to prevent invalid states.
 
-*   **`VerificationCodeStatus`**: `ACTIVE`, `USED`, `EXPIRED`. These define the strict lifecycle of a code.
-*   **`IdentityTypeEnum`**: E.g., `Admin`, `Email`. Defines the *type* of identifier the code is tied to.
+*   **`VerificationCodeStatus`**: `ACTIVE`, `USED`, `EXPIRED`, `REVOKED`. These define the strict lifecycle of a code.
+*   **`IdentityTypeEnum`**: E.g., `Admin`, `User`, `Customer`. Defines the *type* of identifier the code is tied to.
 *   **`VerificationPurposeEnum`**: E.g., `EmailVerification`, `TelegramChannelLink`. Defines *why* the code was issued. This is heavily tied to the `VerificationPolicyResolver`.

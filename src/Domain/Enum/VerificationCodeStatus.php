@@ -9,5 +9,4 @@ enum VerificationCodeStatus: string
     case ACTIVE = 'active';
     case USED = 'used';
     case EXPIRED = 'expired';
-    case REVOKED = 'revoked';
 }

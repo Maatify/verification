@@ -77,7 +77,7 @@ VerificationBindings::register($containerBuilder);
 $generator = $container->get(VerificationCodeGeneratorInterface::class);
 
 $generated = $generator->generate(
-    IdentityTypeEnum::Email,
+    IdentityTypeEnum::User,
     'user@example.com',
     VerificationPurposeEnum::EmailVerification,
     '192.168.1.100' // Optional IP tracking
@@ -90,7 +90,7 @@ $generated = $generator->generate(
 $validator = $container->get(VerificationCodeValidatorInterface::class);
 
 $result = $validator->validate(
-    IdentityTypeEnum::Email,
+    IdentityTypeEnum::User,
     'user@example.com',
     VerificationPurposeEnum::EmailVerification,
     '123456', // The plain code provided by the user

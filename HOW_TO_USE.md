@@ -56,10 +56,10 @@ use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 
 // Inside your controller action
 $generated = $this->generator->generate(
-    IdentityTypeEnum::Email,
+    IdentityTypeEnum::User,
     'user@example.com',
     VerificationPurposeEnum::EmailVerification,
-    $request->getAttribute(\Maatify\AdminKernel\Context\RequestContext::class)?->getIpAddress() // Example IP tracking
+    $request->getAttribute(\MyFramework\Http\Request::class)?->getIpAddress() // Example IP tracking
 );
 
 // $generated->plainCode contains the 6-digit plain text code (e.g., '123456')
@@ -82,11 +82,11 @@ use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 
 $result = $this->validator->validate(
-    IdentityTypeEnum::Email,
+    IdentityTypeEnum::User,
     'user@example.com',
     VerificationPurposeEnum::EmailVerification,
     '123456', // The plain code provided by the user
-    $request->getAttribute(\Maatify\AdminKernel\Context\RequestContext::class)?->getIpAddress() // Example IP tracking
+    $request->getAttribute(\MyFramework\Http\Request::class)?->getIpAddress() // Example IP tracking
 );
 
 if ($result->success) {
