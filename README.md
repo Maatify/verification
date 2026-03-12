@@ -1,28 +1,25 @@
 # Maatify Verification Module
 
-[![Latest Version](https://img.shields.io/packagist/v/maatify/verification.svg?style=for-the-badge)](https://packagist.org/packages/maatify/verification)
-[![PHP Version](https://img.shields.io/packagist/php-v/maatify/verification.svg?style=for-the-badge)](https://packagist.org/packages/maatify/verification)
+[![Latest Version](https://img.shields.io/packagist/v/maatify/verification?style=for-the-badge)](https://packagist.org/packages/maatify/verification)
+[![PHP Version](https://img.shields.io/packagist/php-v/maatify/verification?style=for-the-badge)](https://packagist.org/packages/maatify/verification)
 [![License](https://img.shields.io/github/license/Maatify/verification?style=for-the-badge)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/Maatify/verification/ci.yml?style=for-the-badge)](https://github.com/Maatify/verification/actions)
 
-[![PHPStan](https://img.shields.io/badge/PHPStan-level%20max-brightgreen.svg)](https://phpstan.org/)
-![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?style=for-the-badge&logo=php)
+[![PHPStan](https://img.shields.io/badge/PHPStan-Level%20Max-brightgreen?style=for-the-badge)](https://phpstan.org/)
+[![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?style=for-the-badge&logo=php)](https://www.php.net)
 
-[![Changelog](https://img.shields.io/badge/Changelog-View-blue)](CHANGELOG.md)
-[![Security](https://img.shields.io/badge/Security-Policy-important)](SECURITY.md)
+[![Monthly Downloads](https://img.shields.io/packagist/dm/maatify/verification?style=for-the-badge)](https://packagist.org/packages/maatify/verification)
+[![Total Downloads](https://img.shields.io/packagist/dt/maatify/verification?style=for-the-badge)](https://packagist.org/packages/maatify/verification)
 
-![Monthly Downloads](https://img.shields.io/packagist/dm/maatify/verification?label=Monthly%20Downloads&color=00A8E8)
-![Total Downloads](https://img.shields.io/packagist/dt/maatify/verification?label=Total%20Downloads&color=2AA9E0)
-
+[![Changelog](https://img.shields.io/badge/Changelog-View-blue?style=for-the-badge)](CHANGELOG.md)
+[![Security](https://img.shields.io/badge/Security-Policy-red?style=for-the-badge)](SECURITY.md)
 [![Security Audit](https://img.shields.io/badge/Security-Audited-green?style=for-the-badge)](SECURITY_AUDIT.md)
 
-![OTP](https://img.shields.io/badge/Verification-OTP-darkgreen?style=for-the-badge)
-![Security](https://img.shields.io/badge/Security-Code%20Verification-orange?style=for-the-badge)
-![Framework Agnostic](https://img.shields.io/badge/Framework-Agnostic-yellow?style=for-the-badge)
-![Maatify Ecosystem](https://img.shields.io/badge/Maatify-Ecosystem-blueviolet?style=for-the-badge)
+[![Verification](https://img.shields.io/badge/Verification-OTP-darkgreen?style=for-the-badge)](#)
+[![Framework](https://img.shields.io/badge/Framework-Agnostic-yellow?style=for-the-badge)](#)
+[![Maatify](https://img.shields.io/badge/Maatify-Ecosystem-blueviolet?style=for-the-badge)](#)
 
 [![Install](https://img.shields.io/badge/Install-composer%20require-blue?style=for-the-badge)](https://packagist.org/packages/maatify/verification)
-
-![CI](https://github.com/Maatify/verification/actions/workflows/ci.yml/badge.svg)
 
 ## Overview
 
