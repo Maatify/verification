@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS `verification_codes` (
 
                                                     `code_hash` VARCHAR(64) NOT NULL,
 
-                                                    `status` ENUM('active','used','expired') NOT NULL DEFAULT 'active',
+                                                    `status` ENUM('active','used','expired','revoked') NOT NULL DEFAULT 'active',
 
                                                     `attempts` INT UNSIGNED NOT NULL DEFAULT 0,
                                                     `max_attempts` INT UNSIGNED NOT NULL,
