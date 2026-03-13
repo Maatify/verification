@@ -8,6 +8,7 @@
     "php": "^8.2",
     "ext-pdo": "*",
     "ext-json": "*",
+    "ext-redis": "*",
 
     "maatify/shared-common": "^1.0"
   },

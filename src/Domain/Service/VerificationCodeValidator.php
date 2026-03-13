@@ -54,7 +54,13 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
         }
 
         // 5. Mark used on success
-        $this->repository->markUsed($code->id, $usedIp);
+        $success = $this->repository->markUsed($code->id, $usedIp);
+        if (!$success) {
+            return VerificationResult::failure('Invalid code.');
+        }
+
+        // 6. Revoke other active codes for this identity
+        $this->repository->revokeAllFor($identityType, $identityId, $purpose);
 
         return VerificationResult::success($code->identityType, $code->identityId, $code->purpose);
     }
@@ -91,7 +97,13 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
         }
 
         // 6. Success -> Mark used
-        $this->repository->markUsed($code->id, $usedIp);
+        $success = $this->repository->markUsed($code->id, $usedIp);
+        if (!$success) {
+            return VerificationResult::failure('Invalid code.');
+        }
+
+        // 7. Revoke other active codes for this identity
+        $this->repository->revokeAllFor($code->identityType, $code->identityId, $code->purpose);
 
         return VerificationResult::success($code->identityType, $code->identityId, $code->purpose);
     }
