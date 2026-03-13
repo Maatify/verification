@@ -41,7 +41,8 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
 
         // 3. Check attempts
         if ($isValid && $code !== null && $code->attempts >= $code->maxAttempts) {
-            $this->repository->expire($code->id);
+            // Because our atomic update handles expiration during increments,
+            // this in-memory check mainly acts as a short-circuit.
             $isValid = false;
         }
 
@@ -51,12 +52,9 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
 
         if (!$isValid || !$hashMatches) {
             if ($isValid && $code !== null) {
-                // Increment attempts on failure ONLY when code is active and valid, but hash is incorrect
+                // Increment attempts on failure ONLY when code is active and valid, but hash is incorrect.
+                // Expiration is handled atomically by the repository.
                 $this->repository->incrementAttempts($code->id);
-                // Check if this attempt exceeded max
-                if ($code->attempts + 1 >= $code->maxAttempts) {
-                    $this->repository->expire($code->id);
-                }
             }
             return VerificationResult::failure('Invalid code.');
         }
@@ -112,8 +110,6 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
         // 5. Check attempts
         // Even if hash matches, maybe it was locked out previously?
         if ($isValid && $code !== null && $code->attempts >= $code->maxAttempts) {
-            $this->repository->incrementAttempts($code->id);
-            $this->repository->expire($code->id);
             $isValid = false;
         }
 
@@ -122,12 +118,9 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
 
         if (!$isValid || !$hashMatches) {
             if ($isValid && $code !== null) {
-                // Increment attempts on failure ONLY when code is active and valid, but hash is incorrect
+                // Increment attempts on failure ONLY when code is active and valid, but hash is incorrect.
+                // Expiration is handled atomically by the repository.
                 $this->repository->incrementAttempts($code->id);
-                // Check if this attempt exceeded max
-                if ($code->attempts + 1 >= $code->maxAttempts) {
-                    $this->repository->expire($code->id);
-                }
             }
             return VerificationResult::failure('Invalid code.');
         }

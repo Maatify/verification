@@ -10,6 +10,12 @@ use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 
 interface VerificationCodeRepositoryInterface
 {
+    public function beginTransaction(): void;
+
+    public function commit(): void;
+
+    public function rollBack(): void;
+
     public function store(VerificationCode $code): void;
 
     public function findActive(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose): ?VerificationCode;

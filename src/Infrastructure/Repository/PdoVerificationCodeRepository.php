@@ -21,15 +21,30 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
     ) {
     }
 
+    public function beginTransaction(): void
+    {
+        $this->pdo->beginTransaction();
+    }
+
+    public function commit(): void
+    {
+        $this->pdo->commit();
+    }
+
+    public function rollBack(): void
+    {
+        $this->pdo->rollBack();
+    }
+
     public function store(VerificationCode $code): void
     {
         $stmt = $this->pdo->prepare('
             INSERT INTO verification_codes (
                 identity_type, identity_id, purpose, code_hash,
-                status, attempts, max_attempts, expires_at, created_at, created_ip
+                status, attempts, max_attempts, expires_at, created_at, used_at, created_ip
             ) VALUES (
                 :identity_type, :identity_id, :purpose, :code_hash,
-                :status, :attempts, :max_attempts, :expires_at, :created_at, :created_ip
+                :status, :attempts, :max_attempts, :expires_at, :created_at, :used_at, :created_ip
             )
         ');
 
@@ -43,6 +58,7 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             'max_attempts' => $code->maxAttempts,
             'expires_at' => $code->expiresAt->format('Y-m-d H:i:s'),
             'created_at' => $code->createdAt->format('Y-m-d H:i:s'),
+            'used_at' => $code->usedAt?->format('Y-m-d H:i:s'),
             'created_ip' => $code->createdIp,
         ]);
     }
@@ -96,11 +112,16 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
 
     public function incrementAttempts(int $codeId): void
     {
-        $stmt = $this->pdo->prepare('
+        $stmt = $this->pdo->prepare("
             UPDATE verification_codes
-            SET attempts = attempts + 1
+            SET attempts = attempts + 1,
+                status = CASE
+                    WHEN attempts + 1 >= max_attempts THEN 'expired'
+                    ELSE status
+                END
             WHERE id = :id
-        ');
+            AND status = 'active'
+        ");
         $stmt->execute(['id' => $codeId]);
     }
 
@@ -108,10 +129,11 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
     {
         $stmt = $this->pdo->prepare("
             UPDATE verification_codes
-            SET status = 'used', used_ip = :used_ip
+            SET status = 'used', used_ip = :used_ip, used_at = :now
             WHERE id = :id
             AND status = 'active'
             AND expires_at >= :now
+            AND attempts < max_attempts
         ");
         $stmt->execute([
             'id' => $codeId,
@@ -258,6 +280,8 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
         $expiresAt = $row['expires_at'];
         /** @var string $createdAt */
         $createdAt = $row['created_at'];
+        /** @var ?string $usedAt */
+        $usedAt = $row['used_at'] ?? null;
         /** @var ?string $createdIp */
         $createdIp = $row['created_ip'] ?? null;
         /** @var ?string $usedIp */
@@ -274,6 +298,7 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             (int)$maxAttempts,
             new DateTimeImmutable($expiresAt, $this->clock->getTimezone()),
             new DateTimeImmutable($createdAt, $this->clock->getTimezone()),
+            $usedAt ? new DateTimeImmutable($usedAt, $this->clock->getTimezone()) : null,
             $createdIp,
             $usedIp
         );
