@@ -297,6 +297,44 @@ If affected rows = 0 → validation failed.
 
 ---
 
+## 12.1 Code-Only Validation
+
+The module MAY expose an additional validation method:
+
+```
+validateByCode(string plainCode)
+```
+
+This method exists to support verification flows where the verification challenge
+is resolved using the code itself rather than a pre-identified identity.
+
+Examples may include:
+
+* magic code flows
+* external verification gateways
+* manual verification interfaces
+
+However, the **primary verification model of this module remains identity-bound verification** using:
+
+```
+identity_type
+identity_id
+purpose
+```
+
+Applications SHOULD prefer identity-bound validation whenever the identity context is available.
+
+Implementations MUST ensure that:
+
+* codes remain short-lived (`expires_at`)
+* attempt limits are enforced
+* replay protection is enforced
+* validation remains atomic
+
+The existence of `validateByCode()` **does not change the lifecycle guarantees or security requirements defined in this specification**.
+
+---
+
 # 13. Replay Protection
 
 After successful validation:
