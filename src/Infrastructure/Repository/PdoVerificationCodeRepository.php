@@ -103,14 +103,16 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
         $stmt->execute(['id' => $codeId]);
     }
 
-    public function markUsed(int $codeId, ?string $usedIp = null): void
+    public function markUsed(int $codeId, ?string $usedIp = null): bool
     {
         $stmt = $this->pdo->prepare("
             UPDATE verification_codes
             SET status = 'used', used_ip = :used_ip
             WHERE id = :id
+            AND status = 'active'
         ");
         $stmt->execute(['id' => $codeId, 'used_ip' => $usedIp]);
+        return $stmt->rowCount() === 1;
     }
 
     public function expire(int $codeId): void
@@ -138,6 +140,90 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             'identity_id' => $identityId,
             'purpose' => $purpose->value,
         ]);
+    }
+
+    /**
+     * @param array<int> $exceptIds
+     */
+    public function revokeAllFor(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose, array $exceptIds = []): void
+    {
+        $query = "
+            UPDATE verification_codes
+            SET status = 'revoked'
+            WHERE identity_type = :identity_type
+            AND identity_id = :identity_id
+            AND purpose = :purpose
+            AND status = 'active'
+        ";
+
+        $params = [
+            'identity_type' => $identityType->value,
+            'identity_id' => $identityId,
+            'purpose' => $purpose->value,
+        ];
+
+        if (!empty($exceptIds)) {
+            $namedParams = [];
+            foreach ($exceptIds as $i => $exceptId) {
+                $paramName = ':id_' . $i;
+                $namedParams[] = $paramName;
+                $params[$paramName] = $exceptId;
+            }
+            $inQuery = implode(',', $namedParams);
+            $query .= " AND id NOT IN ($inQuery)";
+        }
+
+        $stmt = $this->pdo->prepare($query);
+        $stmt->execute($params);
+    }
+
+    /**
+     * @return VerificationCode[]
+     */
+    public function findAllActive(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose): array
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT * FROM verification_codes
+            WHERE identity_type = :identity_type
+            AND identity_id = :identity_id
+            AND purpose = :purpose
+            AND status = 'active'
+            ORDER BY created_at DESC
+        ");
+
+        $stmt->execute([
+            'identity_type' => $identityType->value,
+            'identity_id' => $identityId,
+            'purpose' => $purpose->value,
+        ]);
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[] = $this->mapRowToDto($row);
+        }
+        return $result;
+    }
+
+    public function countActiveInWindow(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose, \DateTimeInterface $since): int
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT COUNT(*) FROM verification_codes
+            WHERE identity_type = :identity_type
+            AND identity_id = :identity_id
+            AND purpose = :purpose
+            AND created_at >= :since
+        ");
+
+        $stmt->execute([
+            'identity_type' => $identityType->value,
+            'identity_id' => $identityId,
+            'purpose' => $purpose->value,
+            'since' => $since->format('Y-m-d H:i:s')
+        ]);
+
+        return (int)$stmt->fetchColumn();
     }
 
     /**

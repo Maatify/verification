@@ -21,7 +21,12 @@ final class VerificationCodeGeneratorTest extends TestCase
         $repo = $this->createMock(VerificationCodeRepositoryInterface::class);
 
         $repo->expects($this->once())
-            ->method('expireAllFor');
+            ->method('countActiveInWindow')
+            ->willReturn(0);
+
+        $repo->expects($this->once())
+            ->method('findAllActive')
+            ->willReturn([]);
 
         $repo->expects($this->once())
             ->method('store')
