@@ -26,10 +26,10 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
         $stmt = $this->pdo->prepare('
             INSERT INTO verification_codes (
                 identity_type, identity_id, purpose, code_hash,
-                status, attempts, max_attempts, expires_at, created_at, used_at, created_ip
+                status, attempts, max_attempts, expires_at, created_at, used_at, created_ip, used_ip
             ) VALUES (
                 :identity_type, :identity_id, :purpose, :code_hash,
-                :status, :attempts, :max_attempts, :expires_at, :created_at, :used_at, :created_ip
+                :status, :attempts, :max_attempts, :expires_at, :created_at, :used_at, :created_ip, :used_ip
             )
         ');
 
@@ -45,6 +45,7 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             'created_at' => $code->createdAt->format('Y-m-d H:i:s'),
             'used_at' => $code->usedAt?->format('Y-m-d H:i:s'),
             'created_ip' => $code->createdIp,
+            'used_ip' => $code->usedIp,
         ]);
     }
 
@@ -81,6 +82,7 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             SELECT * FROM verification_codes
             WHERE code_hash = :code_hash
             AND status = 'active'
+            ORDER BY created_at DESC
             LIMIT 1
         ");
 
@@ -228,6 +230,7 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             AND identity_id = :identity_id
             AND purpose = :purpose
             AND created_at >= :since
+            AND status IN ("active","used")
         ');
 
         $stmt->execute([
@@ -287,5 +290,44 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             $createdIp,
             $usedIp
         );
+    }
+
+    /**
+     * Locks active codes for update.
+     *
+     * Used to guarantee atomic generation.
+     *
+     * @return VerificationCode[]
+     */
+    public function lockActiveForUpdate(
+        IdentityTypeEnum $identityType,
+        string $identityId,
+        VerificationPurposeEnum $purpose
+    ): array {
+        $stmt = $this->pdo->prepare("
+        SELECT *
+        FROM verification_codes
+        WHERE identity_type = :identity_type
+        AND identity_id = :identity_id
+        AND purpose = :purpose
+        AND status = 'active'
+        ORDER BY created_at DESC
+        FOR UPDATE
+        ");
+
+        $stmt->execute([
+            'identity_type' => $identityType->value,
+            'identity_id'   => $identityId,
+            'purpose'       => $purpose->value,
+        ]);
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[] = $this->mapRowToDto($row);
+        }
+
+        return $result;
     }
 }

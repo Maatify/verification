@@ -9,22 +9,23 @@ use Maatify\Verification\Domain\Contracts\VerificationCodeRepositoryInterface;
 use Maatify\Verification\Domain\Contracts\VerificationCodeValidatorInterface;
 use Maatify\Verification\Domain\DTO\VerificationResult;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
-use Maatify\Verification\Domain\Enum\VerificationCodeStatus;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 
 readonly class VerificationCodeValidator implements VerificationCodeValidatorInterface
 {
+    private const DUMMY_HASH = '91b4d142823f9a29f4d1b0b90a9f1dbe64c5b7c0e92ce409dab66f6cc0b93e63';
     public function __construct(
         private VerificationCodeRepositoryInterface $repository,
-        private ClockInterface $clock
+        private ClockInterface $clock,
+        private string $secret
     ) {
     }
 
     public function validate(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose, string $plainCode, ?string $usedIp = null): VerificationResult
     {
         $code = $this->repository->findActive($identityType, $identityId, $purpose);
-        $inputHash = hash('sha256', $plainCode);
-        $dummyHash = hash('sha256', '000000');
+        $inputHash = hash_hmac('sha256', $plainCode, $this->secret);
+        $dummyHash = self::DUMMY_HASH;
 
         if ($code === null) {
             // Constant-time dummy check to prevent timing attacks
@@ -55,15 +56,20 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
             return VerificationResult::failure('Invalid code.');
         }
 
-        $this->repository->revokeAllFor($identityType, $identityId, $purpose);
+        $this->repository->revokeAllFor(
+            $identityType,
+            $identityId,
+            $purpose,
+            [$code->id]
+        );
 
         return VerificationResult::success($code->identityType, $code->identityId, $code->purpose);
     }
 
     public function validateByCode(string $plainCode, ?string $usedIp = null): VerificationResult
     {
-        $codeHash = hash('sha256', $plainCode);
-        $dummyHash = hash('sha256', '000000');
+        $codeHash = hash_hmac('sha256', $plainCode, $this->secret);
+        $dummyHash = self::DUMMY_HASH;
 
         $code = $this->repository->findByCodeHash($codeHash);
 
@@ -94,7 +100,12 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
             return VerificationResult::failure('Invalid code.');
         }
 
-        $this->repository->revokeAllFor($code->identityType, $code->identityId, $code->purpose);
+        $this->repository->revokeAllFor(
+            $code->identityType,
+            $code->identityId,
+            $code->purpose,
+            [$code->id]
+        );
 
         return VerificationResult::success($code->identityType, $code->identityId, $code->purpose);
     }

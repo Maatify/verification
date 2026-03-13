@@ -25,6 +25,7 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
         private VerificationCodePolicyResolverInterface $policyResolver,
         private ClockInterface $clock,
         private TransactionManagerInterface $transactionManager,
+        private string $secret,
         private ?VerificationRateLimiterInterface $rateLimiter = null
     ) {
     }
@@ -46,7 +47,11 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
             }
 
             // 3. Generation Cooldown & Multi-Code Window
-            $activeCodes = $this->repository->findAllActive($identityType, $identityId, $purpose);
+            $activeCodes = $this->repository->lockActiveForUpdate(
+                $identityType,
+                $identityId,
+                $purpose
+            );
 
             if (!empty($activeCodes)) {
                 $latestCode = $activeCodes[0];
@@ -81,7 +86,7 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
             }
 
             // 5. Hash
-            $codeHash = hash('sha256', $plainCode);
+            $codeHash = hash_hmac('sha256', $plainCode, $this->secret);
 
             // 6. Create Entity
             $expiresAt = $now->modify("+{$policy->ttlSeconds} seconds");

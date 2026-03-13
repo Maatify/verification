@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use Maatify\SharedCommon\Contracts\ClockInterface;
+use Maatify\Verification\Domain\Contracts\TransactionManagerInterface;
 use Maatify\Verification\Domain\Contracts\VerificationCodePolicyResolverInterface;
 use Maatify\Verification\Domain\Contracts\VerificationCodeRepositoryInterface;
+use Maatify\Verification\Domain\Contracts\VerificationRateLimiterInterface;
 use Maatify\Verification\Domain\DTO\VerificationCode;
 use Maatify\Verification\Domain\DTO\VerificationPolicy;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
-use Maatify\Verification\Domain\Contracts\TransactionManagerInterface;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 use Maatify\Verification\Domain\Service\VerificationCodeGenerator;
 use PHPUnit\Framework\TestCase;
@@ -26,7 +27,7 @@ final class VerificationCodeGeneratorTest extends TestCase
             ->willReturn(0);
 
         $repo->expects($this->once())
-            ->method('findAllActive')
+            ->method('lockActiveForUpdate')
             ->willReturn([]);
 
         $repo->expects($this->once())
@@ -50,17 +51,27 @@ final class VerificationCodeGeneratorTest extends TestCase
             ->willReturn(new \DateTimeImmutable());
 
         $transactionManager = $this->createMock(TransactionManagerInterface::class);
+
         $transactionManager->expects($this->once())
             ->method('run')
             ->willReturnCallback(function (callable $callback) {
                 return $callback();
             });
 
+        $rateLimiter = $this->createMock(VerificationRateLimiterInterface::class);
+
+        $rateLimiter->expects($this->once())
+            ->method('hit');
+
+        $secret = 'test_secret';
+
         $generator = new VerificationCodeGenerator(
             $repo,
             $resolver,
             $clock,
-            $transactionManager
+            $transactionManager,
+            $secret,
+            $rateLimiter
         );
 
         $result = $generator->generate(

@@ -1,11 +1,12 @@
 # Maatify Verification
-## v1.0 Implementation Specification
 
-This document defines the final implementation specification for the `maatify/verification` module.
+# v1.0 Final Implementation Specification
 
-The purpose of this specification is to provide a **stable implementation target** for the first production release.
+This document defines the **final implementation specification** for the `maatify/verification` module.
 
-All implementations MUST follow this document.
+The purpose of this specification is to provide a **stable and production-ready implementation target**.
+
+All implementations **MUST follow this document**.
 
 ---
 
@@ -13,45 +14,48 @@ All implementations MUST follow this document.
 
 The verification module is responsible for:
 
-- OTP generation
-- OTP secure storage
-- OTP validation
-- verification lifecycle management
-- brute force protection
+* OTP generation
+* OTP secure storage
+* OTP validation
+* verification lifecycle management
+* brute force protection
+* resend protection
+* verification replay protection
 
-The module is NOT responsible for:
+The module is **NOT responsible** for:
 
-- SMS / Email delivery
-- account lookup
-- user existence checks
-- network rate limiting
-- captcha / bot detection
+* SMS delivery
+* Email delivery
+* push notifications
+* account lookup
+* user existence checks
+* captcha
+* IP rate limiting
+* bot detection
 
-These responsibilities belong to the host application.
+These responsibilities belong to the **host application**.
 
 ---
 
 # 2. Identity Model
 
-Verification challenges are identified using three fields:
+Verification challenges are uniquely identified using:
 
 ```
-
 identity_type
 identity_id
 purpose
-
 ```
 
 Example:
 
 ```
-
 identity_type = user
 identity_id   = 154
 purpose       = login
-
 ```
+
+This triple uniquely identifies a **verification challenge scope**.
 
 ---
 
@@ -60,7 +64,6 @@ purpose       = login
 The system supports the following identity types:
 
 ```
-
 admin
 user
 customer
@@ -72,13 +75,12 @@ subaccount
 partner
 reseller
 affiliate
-
 ```
 
-These values must be supported both in:
+These values **must exist in both**:
 
-- the database schema
-- the `IdentityTypeEnum`
+* the database schema
+* the `IdentityTypeEnum`
 
 ---
 
@@ -87,15 +89,12 @@ These values must be supported both in:
 Table name:
 
 ```
-
 verification_codes
-
 ```
 
-Important fields:
+Required columns:
 
 ```
-
 id
 identity_type
 identity_id
@@ -109,50 +108,99 @@ created_at
 used_at
 created_ip
 used_ip
-
 ```
+
+### Column definitions
+
+| column        | description                  |
+| ------------- | ---------------------------- |
+| id            | primary key                  |
+| identity_type | identity category            |
+| identity_id   | identity reference           |
+| purpose       | verification purpose         |
+| code_hash     | SHA256 hash of OTP           |
+| status        | verification lifecycle state |
+| attempts      | failed attempts counter      |
+| max_attempts  | allowed attempts             |
+| expires_at    | expiration timestamp         |
+| created_at    | creation timestamp           |
+| used_at       | verification timestamp       |
+| created_ip    | optional request IP          |
+| used_ip       | optional verification IP     |
 
 ---
 
-# 5. OTP Generation
+# 5. Required Database Indexes
 
-Verification codes MUST be generated using:
+The following indexes **must exist**:
 
 ```
+INDEX idx_identity_scope (identity_type, identity_id, purpose)
 
+INDEX idx_code_hash (code_hash)
+
+INDEX idx_created_at (created_at)
+```
+
+These indexes are required for:
+
+* validation lookup
+* generation window checks
+* replay protection
+
+---
+
+# 6. OTP Generation
+
+Verification codes **must be generated using**:
+
+```
 random_int()
-
 ```
 
-The plaintext code MUST NEVER be stored.
-
-Instead the system stores:
+Example implementation:
 
 ```
+random_int(100000, 999999)
+```
 
+The OTP length **should be 6 digits by default**.
+
+---
+
+# 7. OTP Storage
+
+The plaintext code **must never be stored**.
+
+Instead the system must store:
+
+```
 sha256(code)
+```
 
+Example:
+
+```
+hash('sha256', $code)
 ```
 
 ---
 
-# 6. Verification Lifecycle
+# 8. Verification Lifecycle
 
 Each verification code must be in one of the following states:
 
 ```
-
 ACTIVE
 USED
 EXPIRED
 REVOKED
-
 ```
 
 Definitions:
 
 ACTIVE
-Code is valid and can be used.
+Code is valid and can be verified.
 
 USED
 Code was successfully verified.
@@ -165,231 +213,214 @@ Code was invalidated due to a newer code or successful verification.
 
 ---
 
-# 7. Expiration
+# 9. Expiration
 
 Each verification code has a TTL.
 
 Field:
 
 ```
-
 expires_at
-
 ```
 
-Validation MUST fail if current time exceeds `expires_at`.
+Validation must fail if:
+
+```
+current_time > expires_at
+```
+
+Expired codes must transition to:
+
+```
+status = EXPIRED
+```
 
 ---
 
-# 8. Attempt Protection
+# 10. Attempt Protection
 
-Each code contains:
+Each verification code contains:
 
 ```
-
 attempts
 max_attempts
-
 ```
 
-Each failed validation increments attempts.
+Each failed validation increments:
+
+```
+attempts++
+```
 
 If:
 
 ```
-
 attempts >= max_attempts
-
 ```
 
 Then:
 
 ```
-
 status = EXPIRED
-
 ```
 
 ---
 
-# 9. Multi-Code Window
+# 11. Multi-Code Window
 
-Due to possible SMS or Email delays, multiple active codes may exist.
+Due to SMS or Email delays, multiple active codes may exist.
+
+Configuration:
 
 ```
-
 max_active_codes = 3
-
 ```
 
 Per:
 
 ```
-
-identity_type + identity_id + purpose
-
+identity_type
+identity_id
+purpose
 ```
 
-If the number exceeds the limit:
+If active codes exceed this limit:
 
-The oldest active codes must be revoked.
+The **oldest codes must be revoked**.
 
 ---
 
-# 10. Generation Cooldown
+# 12. Generation Cooldown
 
-New codes cannot be generated immediately after a previous request.
-
-Configuration:
+To prevent resend abuse:
 
 ```
-
 resend_cooldown
-
 ```
 
 Example:
 
 ```
-
 60 seconds
-
 ```
 
-If the last code was created within the cooldown period, generation must be rejected.
+If the last code was created within the cooldown period:
+
+Generation must be rejected.
 
 ---
 
-# 11. Generation Window Limit
+# 13. Generation Window Limit
 
-To prevent OTP storms and SMS abuse, the system enforces a generation window.
+To prevent OTP storms and SMS abuse:
 
-Example configuration:
+Configuration example:
 
 ```
-
 max_codes_per_window = 5
 generation_window = 15 minutes
+```
 
-````
+If the number of generated codes within the window exceeds the limit:
 
-If exceeded, new generation requests must be rejected.
+Generation must be rejected.
 
 ---
 
-# 12. Atomic Validation
+# 14. Atomic Code Generation
 
-Validation MUST be atomic to prevent race conditions.
+Code generation **must be atomic**.
 
-Example SQL pattern:
-
-```sql
-UPDATE verification_codes
-SET status = 'used',
-    used_at = NOW()
-WHERE id = ?
-AND status = 'active'
-````
-
-If affected rows = 1 → validation succeeded.
-
-If affected rows = 0 → validation failed.
-
----
-
-## 12.1 Code-Only Validation
-
-The module MAY expose an additional validation method:
-
-```
-validateByCode(string plainCode)
-```
-
-This method exists to support verification flows where the verification challenge
-is resolved using the code itself rather than a pre-identified identity.
-
-Examples may include:
-
-* magic code flows
-* external verification gateways
-* manual verification interfaces
-
-However, the **primary verification model of this module remains identity-bound verification** using:
-
-```
-identity_type
-identity_id
-purpose
-```
-
-Applications SHOULD prefer identity-bound validation whenever the identity context is available.
-
-Implementations MUST ensure that:
-
-* codes remain short-lived (`expires_at`)
-* attempt limits are enforced
-* replay protection is enforced
-* validation remains atomic
-
-The existence of `validateByCode()` **does not change the lifecycle guarantees or security requirements defined in this specification**.
-
----
-
-# 13. Replay Protection
-
-After successful validation:
-
-```
-status = USED
-```
-
-The same code must never be accepted again.
-
----
-
-# 14. Revoke On Success
-
-After successful verification, the system must revoke all other active codes for the same challenge:
-
-```
-identity_type
-identity_id
-purpose
-```
-
----
-
-# 15. Atomic Code Generation
-
-Generation must avoid race conditions.
-
-Implementation must guarantee:
+Implementations must guarantee:
 
 ```
 active_codes <= max_active_codes
 ```
 
-Even under parallel requests.
+Even under concurrent requests.
 
 Recommended implementation:
 
-* transaction
-* row locking
-* revoke oldest codes before insertion
+```
+transaction
+SELECT ... FOR UPDATE
+revoke oldest
+insert new code
+```
 
 ---
 
-# 16. Optional Redis Rate Limiting
+# 15. Atomic Validation
 
-The module supports optional Redis-based rate limiting.
+Verification must be atomic.
 
-This must be implemented through:
+Example SQL pattern:
+
+```
+UPDATE verification_codes
+SET status = 'used',
+    used_at = NOW()
+WHERE id = ?
+AND status = 'active'
+```
+
+If:
+
+```
+affected_rows = 1
+```
+
+Validation succeeded.
+
+If:
+
+```
+affected_rows = 0
+```
+
+Validation failed.
+
+---
+
+# 16. Replay Protection
+
+After successful verification:
+
+```
+status = USED
+```
+
+The same code must **never be accepted again**.
+
+---
+
+# 17. Revoke On Success
+
+After successful verification:
+
+All other active codes for the same challenge must be revoked.
+
+Scope:
+
+```
+identity_type
+identity_id
+purpose
+```
+
+---
+
+# 18. Optional Redis Rate Limiting
+
+The module supports **optional Redis-based rate limiting**.
+
+This is implemented through:
 
 ```
 VerificationRateLimiterInterface
 ```
 
-If Redis is not available:
+If Redis is unavailable:
 
 ```
 NullRateLimiter
@@ -399,21 +430,21 @@ must be used.
 
 ---
 
-# 17. Redis Namespace
+# 19. Redis Namespace
 
-All Redis keys must use the following prefix:
+All Redis keys must use a configurable prefix.
+
+Default:
 
 ```
 maatify:verification
 ```
 
-This prefix MUST be configurable.
-
 ---
 
-# 18. Redis Key Structure
+# 20. Redis Key Structure
 
-Redis keys must follow this structure:
+Redis keys follow:
 
 ```
 {prefix}:rate:{identity_type}:{identity_id}:{purpose}
@@ -427,27 +458,43 @@ maatify:verification:rate:user:154:login
 
 ---
 
-# 19. Redis Counters
+# 21. Redis Counter Windows
 
-Counters stored inside Redis Hash:
-
-```
-5m
-1h
-24h
-```
-
-Example:
+Rate limits are tracked across three windows:
 
 ```
-5m  -> 2
-1h  -> 6
-24h -> 11
+5 minutes
+1 hour
+24 hours
 ```
 
 ---
 
-# 20. Example Limits
+# 22. Redis Counter Implementation
+
+Counters are stored inside a Redis Hash.
+
+Each window is stored using **time-block based fields**.
+
+Example:
+
+```
+5m:2938472
+1h:489372
+24h:98123
+```
+
+Where the suffix represents a **time block identifier**.
+
+This approach ensures:
+
+* counters automatically rotate per window
+* no cron jobs are required
+* historical counters expire naturally
+
+---
+
+# 23. Example Rate Limits
 
 Recommended limits:
 
@@ -457,40 +504,62 @@ Recommended limits:
 20 codes / 24 hours
 ```
 
+Applications may override these values.
+
 ---
 
-# 21. Security Guarantees
+# 24. Code-Only Validation
 
-The verification module guarantees:
+The module may expose:
+
+```
+validateByCode(string code)
+```
+
+This supports flows where the verification challenge is resolved using the code alone.
+
+Examples:
+
+* magic code login
+* manual verification
+* external verification gateways
+
+However the **primary verification model remains identity-bound verification**.
+
+---
+
+# 25. Security Guarantees
+
+The module guarantees:
 
 * secure OTP generation
 * hashed storage
 * brute force protection
 * replay protection
-* race condition protection
 * resend abuse protection
+* race condition protection
+* verification lifecycle safety
 
 ---
 
-# 22. Out of Scope
+# 26. Cleanup Strategy
 
-The module does NOT implement:
+Old verification codes should be periodically removed.
+
+Example maintenance task:
 
 ```
-IP rate limiting
-captcha
-bot detection
-SMS provider protection
-user lookup
+DELETE FROM verification_codes
+WHERE created_at < NOW() - INTERVAL 30 DAY
 ```
-
-These must be implemented by the host application.
 
 ---
 
-# 23. Framework Independence
+# 27. Framework Independence
 
-The module must remain framework-agnostic and compatible with:
+The module must remain framework-agnostic.
+
+Supported environments include:
 
 ```
 Slim
@@ -498,7 +567,26 @@ Laravel
 Symfony
 Native PHP
 Microservices
+Serverless environments
 ```
+
+---
+
+# 28. Out of Scope
+
+The module intentionally does not implement:
+
+```
+SMS delivery
+Email sending
+captcha
+IP rate limiting
+user lookup
+account validation
+provider abuse protection
+```
+
+These concerns belong to the **host system**.
 
 ---
 

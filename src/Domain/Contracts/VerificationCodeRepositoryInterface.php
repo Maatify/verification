@@ -32,7 +32,24 @@ interface VerificationCodeRepositoryInterface
     /**
      * @return VerificationCode[]
      */
-    public function findAllActive(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose): array;
+    public function findAllActive(
+        IdentityTypeEnum $identityType,
+        string $identityId,
+        VerificationPurposeEnum $purpose
+    ): array;
 
     public function countActiveInWindow(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose, \DateTimeInterface $since): int;
+
+    /**
+    * Locks active codes for update.
+    *
+    * Used to guarantee atomic generation.
+    *
+    * @return VerificationCode[]
+    */
+    public function lockActiveForUpdate(
+        IdentityTypeEnum $identityType,
+        string $identityId,
+        VerificationPurposeEnum $purpose
+    ): array;
 }
