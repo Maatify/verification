@@ -10,6 +10,7 @@ use Maatify\Verification\Domain\Contracts\VerificationCodeRepositoryInterface;
 use Maatify\Verification\Domain\DTO\VerificationCode;
 use Maatify\Verification\Domain\DTO\VerificationPolicy;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
+use Maatify\Verification\Domain\Contracts\TransactionManagerInterface;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 use Maatify\Verification\Domain\Service\VerificationCodeGenerator;
 use PHPUnit\Framework\TestCase;
@@ -48,10 +49,18 @@ final class VerificationCodeGeneratorTest extends TestCase
         $clock->method('now')
             ->willReturn(new \DateTimeImmutable());
 
+        $transactionManager = $this->createMock(TransactionManagerInterface::class);
+        $transactionManager->expects($this->once())
+            ->method('run')
+            ->willReturnCallback(function (callable $callback) {
+                return $callback();
+            });
+
         $generator = new VerificationCodeGenerator(
             $repo,
             $resolver,
-            $clock
+            $clock,
+            $transactionManager
         );
 
         $result = $generator->generate(

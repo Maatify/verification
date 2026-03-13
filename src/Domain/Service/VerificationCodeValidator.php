@@ -22,53 +22,39 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
 
     public function validate(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose, string $plainCode, ?string $usedIp = null): VerificationResult
     {
-        // 1. Find active code
         $code = $this->repository->findActive($identityType, $identityId, $purpose);
         $inputHash = hash('sha256', $plainCode);
         $dummyHash = hash('sha256', '000000');
 
-        $isValid = true;
-
         if ($code === null) {
-            $isValid = false;
-        }
-
-        // 2. Check expiry
-        if ($isValid && $code !== null && $code->expiresAt < $this->clock->now()) {
-            $this->repository->expire($code->id);
-            $isValid = false;
-        }
-
-        // 3. Check attempts
-        if ($isValid && $code !== null && $code->attempts >= $code->maxAttempts) {
-            $this->repository->expire($code->id);
-            $isValid = false;
-        }
-
-        // 4. Constant-time comparison
-        $hashToCompare = ($isValid && $code !== null) ? $code->codeHash : $dummyHash;
-        $hashMatches = hash_equals($hashToCompare, $inputHash);
-
-        if (!$isValid || !$hashMatches) {
-            if ($isValid && $code !== null) {
-                // Increment attempts on failure ONLY when code is active and valid, but hash is incorrect
-                $this->repository->incrementAttempts($code->id);
-                // Check if this attempt exceeded max
-                if ($code->attempts + 1 >= $code->maxAttempts) {
-                    $this->repository->expire($code->id);
-                }
-            }
+            // Constant-time dummy check to prevent timing attacks
+            $_ = hash_equals($dummyHash, $inputHash);
             return VerificationResult::failure('Invalid code.');
         }
 
-        // 5. Mark used on success
-        /** @var \Maatify\Verification\Domain\DTO\VerificationCode $code */
-        $success = $this->repository->markUsed($code->id, $usedIp);
-        if (!$success) {
+        if ($code->expiresAt < $this->clock->now()) {
+            $this->repository->expire($code->id);
+            // Dummy check
+            $_ = hash_equals($dummyHash, $inputHash);
             return VerificationResult::failure('Invalid code.');
         }
 
-        // 6. Revoke other active codes for this identity
+        if ($code->attempts >= $code->maxAttempts) {
+            // Dummy check
+            $_ = hash_equals($dummyHash, $inputHash);
+            return VerificationResult::failure('Invalid code.');
+        }
+
+        if (!hash_equals($code->codeHash, $inputHash)) {
+            $this->repository->incrementAttempts($code->id);
+            return VerificationResult::failure('Invalid code.');
+        }
+
+        // Replay Protection: relies on the atomic SQL update in markUsed()
+        if (!$this->repository->markUsed($code->id, $usedIp)) {
+            return VerificationResult::failure('Invalid code.');
+        }
+
         $this->repository->revokeAllFor($identityType, $identityId, $purpose);
 
         return VerificationResult::success($code->identityType, $code->identityId, $code->purpose);
@@ -76,70 +62,38 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
 
     public function validateByCode(string $plainCode, ?string $usedIp = null): VerificationResult
     {
-        // 1. Hash the input
         $codeHash = hash('sha256', $plainCode);
         $dummyHash = hash('sha256', '000000');
 
-        // 2. Lookup by hash
         $code = $this->repository->findByCodeHash($codeHash);
 
-        $isValid = true;
-
         if ($code === null) {
-            // No matching code found (or hash mismatch implies not found)
-            $isValid = false;
+            $_ = hash_equals($dummyHash, $codeHash);
+            return VerificationResult::failure('Invalid code.');
         }
 
-        // 3. Check status
-        if ($isValid && $code !== null && in_array($code->status, [
-            VerificationCodeStatus::USED,
-            VerificationCodeStatus::REVOKED,
-            VerificationCodeStatus::EXPIRED,
-        ], true)) {
-            $isValid = false;
-        }
-
-        if ($isValid && $code !== null && $code->status !== VerificationCodeStatus::ACTIVE) {
-            $isValid = false;
-        }
-
-        // 4. Check expiry
-        if ($isValid && $code !== null && $code->expiresAt < $this->clock->now()) {
+        // Do not check in-memory status array! Only rely on DB update.
+        if ($code->expiresAt < $this->clock->now()) {
             $this->repository->expire($code->id);
-            $isValid = false;
+            $_ = hash_equals($dummyHash, $codeHash);
+            return VerificationResult::failure('Invalid code.');
         }
 
-        // 5. Check attempts
-        // Even if hash matches, maybe it was locked out previously?
-        if ($isValid && $code !== null && $code->attempts >= $code->maxAttempts) {
+        if ($code->attempts >= $code->maxAttempts) {
+            $_ = hash_equals($dummyHash, $codeHash);
+            return VerificationResult::failure('Invalid code.');
+        }
+
+        if (!hash_equals($code->codeHash, $codeHash)) {
             $this->repository->incrementAttempts($code->id);
-            $this->repository->expire($code->id);
-            $isValid = false;
-        }
-
-        $hashToCompare = ($isValid && $code !== null) ? $code->codeHash : $dummyHash;
-        $hashMatches = hash_equals($hashToCompare, $codeHash);
-
-        if (!$isValid || !$hashMatches) {
-            if ($isValid && $code !== null) {
-                // Increment attempts on failure ONLY when code is active and valid, but hash is incorrect
-                $this->repository->incrementAttempts($code->id);
-                // Check if this attempt exceeded max
-                if ($code->attempts + 1 >= $code->maxAttempts) {
-                    $this->repository->expire($code->id);
-                }
-            }
             return VerificationResult::failure('Invalid code.');
         }
 
-        // 6. Success -> Mark used
-        /** @var \Maatify\Verification\Domain\DTO\VerificationCode $code */
-        $success = $this->repository->markUsed($code->id, $usedIp);
-        if (!$success) {
+        // Replay Protection: relies on the atomic SQL update in markUsed()
+        if (!$this->repository->markUsed($code->id, $usedIp)) {
             return VerificationResult::failure('Invalid code.');
         }
 
-        // 7. Revoke other active codes for this identity
         $this->repository->revokeAllFor($code->identityType, $code->identityId, $code->purpose);
 
         return VerificationResult::success($code->identityType, $code->identityId, $code->purpose);
