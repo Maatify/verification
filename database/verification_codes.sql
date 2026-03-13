@@ -21,14 +21,14 @@
 CREATE TABLE IF NOT EXISTS `verification_codes` (
                                                     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
-                                                    `identity_type` ENUM('admin','email') NOT NULL,
+                                                    `identity_type` ENUM('admin','user','customer','merchant','vendor','agent','company','subaccount','partner','reseller','affiliate') NOT NULL,
                                                     `identity_id` VARCHAR(128) NOT NULL,
 
                                                     `purpose` VARCHAR(64) NOT NULL,
 
                                                     `code_hash` VARCHAR(64) NOT NULL,
 
-                                                    `status` ENUM('active','used','expired') NOT NULL DEFAULT 'active',
+                                                    `status` ENUM('active','used','expired','revoked') NOT NULL DEFAULT 'active',
 
                                                     `attempts` INT UNSIGNED NOT NULL DEFAULT 0,
                                                     `max_attempts` INT UNSIGNED NOT NULL,

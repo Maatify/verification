@@ -18,21 +18,9 @@ interface VerificationCodeRepositoryInterface
 
     public function incrementAttempts(int $codeId): void;
 
-    public function markUsed(int $codeId, ?string $usedIp = null): bool;
+    public function markUsed(int $codeId, ?string $usedIp = null): void;
 
     public function expire(int $codeId): void;
 
     public function expireAllFor(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose): void;
-
-    /**
-     * @param array<int> $exceptIds
-     */
-    public function revokeAllFor(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose, array $exceptIds = []): void;
-
-    /**
-     * @return VerificationCode[]
-     */
-    public function findAllActive(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose): array;
-
-    public function countActiveInWindow(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose, \DateTimeInterface $since): int;
 }
