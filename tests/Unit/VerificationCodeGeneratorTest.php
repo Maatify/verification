@@ -21,12 +21,7 @@ final class VerificationCodeGeneratorTest extends TestCase
         $repo = $this->createMock(VerificationCodeRepositoryInterface::class);
 
         $repo->expects($this->once())
-            ->method('countActiveInWindow')
-            ->willReturn(0);
-
-        $repo->expects($this->once())
-            ->method('findAllActive')
-            ->willReturn([]);
+            ->method('expireAllFor');
 
         $repo->expects($this->once())
             ->method('store')
@@ -55,7 +50,7 @@ final class VerificationCodeGeneratorTest extends TestCase
         );
 
         $result = $generator->generate(
-            IdentityTypeEnum::User,
+            IdentityTypeEnum::Email,
             'user@example.com',
             VerificationPurposeEnum::EmailVerification
         );
