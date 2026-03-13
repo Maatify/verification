@@ -76,11 +76,12 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
 
     public function findByCodeHash(string $codeHash): ?VerificationCode
     {
-        $stmt = $this->pdo->prepare('
+        $stmt = $this->pdo->prepare("
             SELECT * FROM verification_codes
             WHERE code_hash = :code_hash
+            AND status = 'active'
             LIMIT 1
-        ');
+        ");
 
         $stmt->execute(['code_hash' => $codeHash]);
 

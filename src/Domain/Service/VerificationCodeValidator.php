@@ -26,6 +26,8 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
         $code = $this->repository->findActive($identityType, $identityId, $purpose);
 
         if ($code === null) {
+            $dummyHash = hash('sha256', '000000');
+            $dummyResult = hash_equals($dummyHash, hash('sha256', $plainCode));
             return VerificationResult::failure('Invalid code.');
         }
 
@@ -75,10 +77,21 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
 
         if ($code === null) {
             // No matching code found (or hash mismatch implies not found)
+            $dummyHash = hash('sha256', '000000');
+            $dummyResult = hash_equals($dummyHash, hash('sha256', $plainCode));
             return VerificationResult::failure('Invalid code.');
         }
 
         // 3. Check status
+        if (in_array($code->status, [
+            VerificationCodeStatus::USED,
+            VerificationCodeStatus::REVOKED,
+            VerificationCodeStatus::EXPIRED,
+        ], true)) {
+            return VerificationResult::failure('Invalid code.');
+        }
+
+        /** @phpstan-ignore-next-line */
         if ($code->status !== VerificationCodeStatus::ACTIVE) {
             return VerificationResult::failure('Invalid code.');
         }
@@ -92,6 +105,7 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
         // 5. Check attempts
         // Even if hash matches, maybe it was locked out previously?
         if ($code->attempts >= $code->maxAttempts) {
+            $this->repository->incrementAttempts($code->id);
             $this->repository->expire($code->id);
             return VerificationResult::failure('Invalid code.');
         }
