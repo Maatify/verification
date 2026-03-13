@@ -29,10 +29,6 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
 
     public function generate(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose, ?string $createdIp = null): GeneratedVerificationCode
     {
-        if ($this->rateLimiter !== null) {
-            $this->rateLimiter->hit($identityType, $identityId, $purpose);
-        }
-
         // 1. Resolve Policy
         $policy = $this->policyResolver->resolve($purpose);
 
@@ -68,6 +64,10 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
 
         if (count($activeCodes) > $keepCount) {
             $this->repository->revokeAllFor($identityType, $identityId, $purpose, $keepIds);
+        }
+
+        if ($this->rateLimiter !== null) {
+            $this->rateLimiter->hit($identityType, $identityId, $purpose);
         }
 
         // 4. Generate random numeric OTP
