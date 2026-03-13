@@ -111,8 +111,13 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             SET status = 'used', used_ip = :used_ip
             WHERE id = :id
             AND status = 'active'
+            AND expires_at >= :now
         ");
-        $stmt->execute(['id' => $codeId, 'used_ip' => $usedIp]);
+        $stmt->execute([
+            'id' => $codeId,
+            'used_ip' => $usedIp,
+            'now' => $this->clock->now()->format('Y-m-d H:i:s')
+        ]);
 
         return $stmt->rowCount() === 1;
     }

@@ -24,38 +24,45 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
     {
         // 1. Find active code
         $code = $this->repository->findActive($identityType, $identityId, $purpose);
+        $inputHash = hash('sha256', $plainCode);
+        $dummyHash = hash('sha256', '000000');
+
+        $isValid = true;
 
         if ($code === null) {
-            $dummyHash = hash('sha256', '000000');
-            $dummyResult = hash_equals($dummyHash, hash('sha256', $plainCode));
-            return VerificationResult::failure('Invalid code.');
+            $isValid = false;
         }
 
         // 2. Check expiry
-        if ($code->expiresAt < $this->clock->now()) {
+        if ($isValid && $code !== null && $code->expiresAt < $this->clock->now()) {
             $this->repository->expire($code->id);
-            return VerificationResult::failure('Invalid code.');
+            $isValid = false;
         }
 
         // 3. Check attempts
-        if ($code->attempts >= $code->maxAttempts) {
+        if ($isValid && $code !== null && $code->attempts >= $code->maxAttempts) {
             $this->repository->expire($code->id);
-            return VerificationResult::failure('Invalid code.');
+            $isValid = false;
         }
 
         // 4. Constant-time comparison
-        $inputHash = hash('sha256', $plainCode);
-        if (!hash_equals($code->codeHash, $inputHash)) {
-            // Increment attempts on failure
-            $this->repository->incrementAttempts($code->id);
-            // Check if this attempt exceeded max
-            if ($code->attempts + 1 >= $code->maxAttempts) {
-                $this->repository->expire($code->id);
+        $hashToCompare = ($isValid && $code !== null) ? $code->codeHash : $dummyHash;
+        $hashMatches = hash_equals($hashToCompare, $inputHash);
+
+        if (!$isValid || !$hashMatches) {
+            if ($code !== null) {
+                // Increment attempts on failure
+                $this->repository->incrementAttempts($code->id);
+                // Check if this attempt exceeded max
+                if ($code->attempts + 1 >= $code->maxAttempts) {
+                    $this->repository->expire($code->id);
+                }
             }
             return VerificationResult::failure('Invalid code.');
         }
 
         // 5. Mark used on success
+        /** @var \Maatify\Verification\Domain\DTO\VerificationCode $code */
         $success = $this->repository->markUsed($code->id, $usedIp);
         if (!$success) {
             return VerificationResult::failure('Invalid code.');
@@ -71,46 +78,54 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
     {
         // 1. Hash the input
         $codeHash = hash('sha256', $plainCode);
+        $dummyHash = hash('sha256', '000000');
 
         // 2. Lookup by hash
         $code = $this->repository->findByCodeHash($codeHash);
 
+        $isValid = true;
+
         if ($code === null) {
             // No matching code found (or hash mismatch implies not found)
-            $dummyHash = hash('sha256', '000000');
-            $dummyResult = hash_equals($dummyHash, hash('sha256', $plainCode));
-            return VerificationResult::failure('Invalid code.');
+            $isValid = false;
         }
 
         // 3. Check status
-        if (in_array($code->status, [
+        if ($isValid && $code !== null && in_array($code->status, [
             VerificationCodeStatus::USED,
             VerificationCodeStatus::REVOKED,
             VerificationCodeStatus::EXPIRED,
         ], true)) {
-            return VerificationResult::failure('Invalid code.');
+            $isValid = false;
         }
 
-        /** @phpstan-ignore-next-line */
-        if ($code->status !== VerificationCodeStatus::ACTIVE) {
-            return VerificationResult::failure('Invalid code.');
+        if ($isValid && $code !== null && $code->status !== VerificationCodeStatus::ACTIVE) {
+            $isValid = false;
         }
 
         // 4. Check expiry
-        if ($code->expiresAt < $this->clock->now()) {
+        if ($isValid && $code !== null && $code->expiresAt < $this->clock->now()) {
             $this->repository->expire($code->id);
-            return VerificationResult::failure('Invalid code.');
+            $isValid = false;
         }
 
         // 5. Check attempts
         // Even if hash matches, maybe it was locked out previously?
-        if ($code->attempts >= $code->maxAttempts) {
+        if ($isValid && $code !== null && $code->attempts >= $code->maxAttempts) {
             $this->repository->incrementAttempts($code->id);
             $this->repository->expire($code->id);
+            $isValid = false;
+        }
+
+        $hashToCompare = ($isValid && $code !== null) ? $code->codeHash : $dummyHash;
+        $hashMatches = hash_equals($hashToCompare, $codeHash);
+
+        if (!$isValid || !$hashMatches) {
             return VerificationResult::failure('Invalid code.');
         }
 
         // 6. Success -> Mark used
+        /** @var \Maatify\Verification\Domain\DTO\VerificationCode $code */
         $success = $this->repository->markUsed($code->id, $usedIp);
         if (!$success) {
             return VerificationResult::failure('Invalid code.');

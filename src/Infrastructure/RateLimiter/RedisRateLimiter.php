@@ -51,28 +51,35 @@ class RedisRateLimiter implements VerificationRateLimiterInterface
             $fieldsToUpdate[$field] = $field . ':' . $block;
         }
 
-        $this->redis->multi();
-        foreach ($fieldsToUpdate as $field => $hashField) {
-            $this->redis->hIncrBy($key, $hashField, 1);
-        }
-        $this->redis->expire($key, self::WINDOWS['24h'] * 2); // Ensure it lasts long enough
-
-        /** @var array<int, int|bool>|false $results */
-        $results = $this->redis->exec();
-
-        if ($results === false || !is_array($results)) {
-            throw new RuntimeException('Failed to execute Redis transaction for rate limiting.');
-        }
-
-        $i = 0;
-        foreach ($fieldsToUpdate as $field => $hashField) {
-            $currentHits = $results[$i];
-
-            // Check if limits exceeded
-            if (isset($this->limits[$field]) && $currentHits > $this->limits[$field]) {
-                throw new RuntimeException(sprintf('Rate limit exceeded for window %s', $field));
+        try {
+            $this->redis->multi();
+            foreach ($fieldsToUpdate as $field => $hashField) {
+                $this->redis->hIncrBy($key, $hashField, 1);
             }
-            $i++;
+            $this->redis->expire($key, self::WINDOWS['24h'] * 2); // Ensure it lasts long enough
+
+            /** @var array<int, int|bool>|false $results */
+            $results = $this->redis->exec();
+
+            if ($results === false || !is_array($results)) {
+                // Log failure but fail open
+                error_log('Failed to execute Redis transaction for rate limiting.');
+                return;
+            }
+
+            $i = 0;
+            foreach ($fieldsToUpdate as $field => $hashField) {
+                $currentHits = $results[$i];
+
+                // Check if limits exceeded
+                if (isset($this->limits[$field]) && $currentHits > $this->limits[$field]) {
+                    throw new RuntimeException(sprintf('Rate limit exceeded for window %s', $field));
+                }
+                $i++;
+            }
+        } catch (\RedisException $e) {
+            // Fail open on Redis failure
+            error_log('Redis exception in rate limiter: ' . $e->getMessage());
         }
     }
 }
