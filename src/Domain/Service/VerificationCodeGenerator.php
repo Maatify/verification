@@ -6,6 +6,7 @@ namespace Maatify\Verification\Domain\Service;
 
 use Exception;
 use Maatify\SharedCommon\Contracts\ClockInterface;
+use Maatify\Verification\Domain\Contracts\TransactionManagerInterface;
 use Maatify\Verification\Domain\Contracts\VerificationCodeGeneratorInterface;
 use Maatify\Verification\Domain\Contracts\VerificationCodePolicyResolverInterface;
 use Maatify\Verification\Domain\Contracts\VerificationCodeRepositoryInterface;
@@ -23,6 +24,7 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
         private VerificationCodeRepositoryInterface $repository,
         private VerificationCodePolicyResolverInterface $policyResolver,
         private ClockInterface $clock,
+        private TransactionManagerInterface $transactionManager,
         private ?VerificationRateLimiterInterface $rateLimiter = null
     ) {
     }
@@ -34,9 +36,7 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
 
         $now = $this->clock->now();
 
-        $this->repository->beginTransaction();
-
-        try {
+        return $this->transactionManager->run(function () use ($policy, $now, $identityType, $identityId, $purpose, $createdIp) {
             // 2. Generation Window Limit
             $since = $now->modify("-{$policy->generationWindowMinutes} minutes");
             $countInWindow = $this->repository->countActiveInWindow($identityType, $identityId, $purpose, $since);
@@ -104,13 +104,8 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
             // 7. Store
             $this->repository->store($entity);
 
-            $this->repository->commit();
-
             // 8. Return (Entity + Plaintext)
             return new GeneratedVerificationCode($entity, $plainCode);
-        } catch (\Throwable $e) {
-            $this->repository->rollBack();
-            throw $e;
-        }
+        });
     }
 }

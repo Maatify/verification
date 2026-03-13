@@ -21,21 +21,6 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
     ) {
     }
 
-    public function beginTransaction(): void
-    {
-        $this->pdo->beginTransaction();
-    }
-
-    public function commit(): void
-    {
-        $this->pdo->commit();
-    }
-
-    public function rollBack(): void
-    {
-        $this->pdo->rollBack();
-    }
-
     public function store(VerificationCode $code): void
     {
         $stmt = $this->pdo->prepare('
