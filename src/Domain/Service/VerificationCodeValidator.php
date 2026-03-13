@@ -98,10 +98,7 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
 
         // 4. Check expiry
         if ($code->expiresAt < $this->clock->now()) {
-            $this->repository->incrementAttempts($code->id);
-            if ($code->attempts + 1 >= $code->maxAttempts) {
-                $this->repository->expire($code->id);
-            }
+            $this->repository->expire($code->id);
             return VerificationResult::failure('Invalid code.');
         }
 
