@@ -22,6 +22,7 @@ readonly class VerificationCode
         public int $maxAttempts,
         public DateTimeImmutable $expiresAt,
         public DateTimeImmutable $createdAt,
+        public ?DateTimeImmutable $usedAt = null,
         public ?string $createdIp = null,
         public ?string $usedIp = null
     ) {

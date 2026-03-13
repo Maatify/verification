@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS `verification_codes` (
                                                     `expires_at` DATETIME NOT NULL,
                                                     `created_at` DATETIME NOT NULL,
 
+                                                    `used_at` DATETIME DEFAULT NULL,
                                                     `created_ip` VARCHAR(45) DEFAULT NULL,
                                                     `used_ip` VARCHAR(45) DEFAULT NULL,
 
