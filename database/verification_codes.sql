@@ -42,9 +42,10 @@ CREATE TABLE IF NOT EXISTS `verification_codes` (
                                                     PRIMARY KEY (`id`),
 
                                                     KEY `idx_active_lookup` (`identity_type`,`identity_id`,`purpose`,`status`),
-                                                    KEY `idx_lookup_window` (`identity_type`,`identity_id`,`purpose`,`status`,`created_at`),
+                                                    KEY `idx_lookup_window` (`identity_type`,`identity_id`,`purpose`,`created_at`),
                                                     KEY `idx_status_expiry` (`status`,`expires_at`),
-                                                    KEY `idx_code_hash` (`code_hash`)
+                                                    KEY `idx_code_hash` (`code_hash`),
+                                                    KEY `idx_lookup_hash` (`code_hash`,`status`)
 
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
