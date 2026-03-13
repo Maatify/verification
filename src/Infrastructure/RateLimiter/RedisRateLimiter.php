@@ -7,6 +7,8 @@ namespace Maatify\Verification\Infrastructure\RateLimiter;
 use Maatify\Verification\Domain\Contracts\VerificationRateLimiterInterface;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use RuntimeException;
 use Redis;
 
@@ -18,6 +20,8 @@ class RedisRateLimiter implements VerificationRateLimiterInterface
         '24h' => 86400,
     ];
 
+    private LoggerInterface $logger;
+
     /**
      * @param array<string, int> $limits
      */
@@ -28,8 +32,10 @@ class RedisRateLimiter implements VerificationRateLimiterInterface
             '5m' => 5,
             '1h' => 15,
             '24h' => 50,
-        ]
+        ],
+        ?LoggerInterface $logger = null
     ) {
+        $this->logger = $logger ?? new NullLogger();
     }
 
     public function hit(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose): void
@@ -63,7 +69,7 @@ class RedisRateLimiter implements VerificationRateLimiterInterface
 
             if ($results === false || !is_array($results)) {
                 // Log failure but fail open
-                error_log('Failed to execute Redis transaction for rate limiting.');
+                $this->logger->warning('Redis rate limiter transaction failed');
                 return;
             }
 
@@ -79,7 +85,7 @@ class RedisRateLimiter implements VerificationRateLimiterInterface
             }
         } catch (\RedisException $e) {
             // Fail open on Redis failure
-            error_log('Redis exception in rate limiter: ' . $e->getMessage());
+            $this->logger->warning('Redis exception in rate limiter: ' . $e->getMessage());
         }
     }
 }

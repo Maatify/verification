@@ -50,8 +50,8 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
         $hashMatches = hash_equals($hashToCompare, $inputHash);
 
         if (!$isValid || !$hashMatches) {
-            if ($code !== null) {
-                // Increment attempts on failure
+            if ($isValid && $code !== null) {
+                // Increment attempts on failure ONLY when code is active and valid, but hash is incorrect
                 $this->repository->incrementAttempts($code->id);
                 // Check if this attempt exceeded max
                 if ($code->attempts + 1 >= $code->maxAttempts) {
@@ -121,6 +121,14 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
         $hashMatches = hash_equals($hashToCompare, $codeHash);
 
         if (!$isValid || !$hashMatches) {
+            if ($isValid && $code !== null) {
+                // Increment attempts on failure ONLY when code is active and valid, but hash is incorrect
+                $this->repository->incrementAttempts($code->id);
+                // Check if this attempt exceeded max
+                if ($code->attempts + 1 >= $code->maxAttempts) {
+                    $this->repository->expire($code->id);
+                }
+            }
             return VerificationResult::failure('Invalid code.');
         }
 
