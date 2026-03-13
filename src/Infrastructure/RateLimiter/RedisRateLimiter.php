@@ -85,7 +85,9 @@ class RedisRateLimiter implements VerificationRateLimiterInterface
             }
         } catch (\RedisException $e) {
             // Fail open on Redis failure
-            $this->logger->warning('Redis exception in rate limiter: ' . $e->getMessage());
+            $this->logger->warning('Redis exception in rate limiter', [
+                'exception' => $e
+            ]);
         }
     }
 }
