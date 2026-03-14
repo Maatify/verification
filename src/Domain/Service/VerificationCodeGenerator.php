@@ -38,6 +38,9 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
         $now = $this->clock->now();
 
         return $this->transactionManager->run(function () use ($policy, $now, $identityType, $identityId, $purpose, $createdIp) {
+            // 1.5 Acquire persistent lock to prevent empty-lock race conditions
+            $this->repository->acquireGenerationLock($identityType, $identityId, $purpose);
+
             // 2. Generation Window Limit
             $since = $now->modify("-{$policy->generationWindowMinutes} minutes");
             $countInWindow = $this->repository->countActiveInWindow($identityType, $identityId, $purpose, $since);
