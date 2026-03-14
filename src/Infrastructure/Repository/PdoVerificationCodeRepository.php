@@ -95,6 +95,7 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
                       AND identity_id = :identity_id
                       AND purpose = :purpose
                       AND status = 'active'
+                      AND expires_at >= :now
                     ORDER BY created_at DESC
                     LIMIT 1
                 ) as target_row
@@ -104,6 +105,7 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             'identity_type' => $identityType->value,
             'identity_id'   => $identityId,
             'purpose'       => $purpose->value,
+            'now'           => $this->clock->now()->format('Y-m-d H:i:s'),
         ]);
     }
 
@@ -117,13 +119,20 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
         $stmt = $this->pdo->prepare("
             UPDATE verification_codes
             SET status = 'used', used_ip = :used_ip, used_at = :now
-            WHERE identity_type = :identity_type
-              AND identity_id = :identity_id
-              AND purpose = :purpose
-              AND code_hash = :code_hash
-              AND status = 'active'
-              AND expires_at >= :now
-              AND attempts < max_attempts
+            WHERE id = (
+                SELECT id FROM (
+                    SELECT id FROM verification_codes
+                    WHERE identity_type = :identity_type
+                      AND identity_id = :identity_id
+                      AND purpose = :purpose
+                      AND code_hash = :code_hash
+                      AND status = 'active'
+                      AND expires_at >= :now
+                      AND attempts < max_attempts
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ) as target_row
+            )
         ");
         $stmt->execute([
             'identity_type' => $identityType->value,
@@ -134,7 +143,7 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             'now'           => $this->clock->now()->format('Y-m-d H:i:s'),
         ]);
 
-        return $stmt->rowCount() > 0;
+        return $stmt->rowCount() === 1;
     }
 
     public function expire(int $codeId): void
