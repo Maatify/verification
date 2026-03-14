@@ -14,8 +14,6 @@ interface VerificationCodeRepositoryInterface
 
     public function findActive(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose): ?VerificationCode;
 
-    public function findByCodeHash(string $codeHash): ?VerificationCode;
-
     public function incrementAttempts(int $codeId): void;
 
     public function markUsed(int $codeId, ?string $usedIp = null): bool;

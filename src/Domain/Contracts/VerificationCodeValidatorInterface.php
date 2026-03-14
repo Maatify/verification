@@ -11,6 +11,4 @@ use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 interface VerificationCodeValidatorInterface
 {
     public function validate(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose, string $plainCode, ?string $usedIp = null): VerificationResult;
-
-    public function validateByCode(string $plainCode, ?string $usedIp = null): VerificationResult;
 }

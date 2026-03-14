@@ -65,48 +65,4 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
 
         return VerificationResult::success($code->identityType, $code->identityId, $code->purpose);
     }
-
-    public function validateByCode(string $plainCode, ?string $usedIp = null): VerificationResult
-    {
-        $codeHash = hash_hmac('sha256', $plainCode, $this->secret);
-        $dummyHash = self::DUMMY_HASH;
-
-        $code = $this->repository->findByCodeHash($codeHash);
-
-        if ($code === null) {
-            $_ = hash_equals($dummyHash, $codeHash);
-            return VerificationResult::failure('Invalid code.');
-        }
-
-        // Do not check in-memory status array! Only rely on DB update.
-        if ($code->expiresAt < $this->clock->now()) {
-            $this->repository->expire($code->id);
-            $_ = hash_equals($dummyHash, $codeHash);
-            return VerificationResult::failure('Invalid code.');
-        }
-
-        if ($code->attempts >= $code->maxAttempts) {
-            $_ = hash_equals($dummyHash, $codeHash);
-            return VerificationResult::failure('Invalid code.');
-        }
-
-        if (!hash_equals($code->codeHash, $codeHash)) {
-            $this->repository->incrementAttempts($code->id);
-            return VerificationResult::failure('Invalid code.');
-        }
-
-        // Replay Protection: relies on the atomic SQL update in markUsed()
-        if (!$this->repository->markUsed($code->id, $usedIp)) {
-            return VerificationResult::failure('Invalid code.');
-        }
-
-        $this->repository->revokeAllFor(
-            $code->identityType,
-            $code->identityId,
-            $code->purpose,
-            [$code->id]
-        );
-
-        return VerificationResult::success($code->identityType, $code->identityId, $code->purpose);
-    }
 }

@@ -76,27 +76,6 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
         return $this->mapRowToDto($row);
     }
 
-    public function findByCodeHash(string $codeHash): ?VerificationCode
-    {
-        $stmt = $this->pdo->prepare("
-            SELECT * FROM verification_codes
-            WHERE code_hash = :code_hash
-            AND status = 'active'
-            ORDER BY created_at DESC
-            LIMIT 1
-        ");
-
-        $stmt->execute(['code_hash' => $codeHash]);
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row === false || !is_array($row)) {
-            return null;
-        }
-
-        return $this->mapRowToDto($row);
-    }
-
     public function incrementAttempts(int $codeId): void
     {
         $stmt = $this->pdo->prepare("
