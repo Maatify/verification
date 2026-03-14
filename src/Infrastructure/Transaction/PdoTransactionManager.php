@@ -22,14 +22,22 @@ class PdoTransactionManager implements TransactionManagerInterface
      */
     public function run(callable $callback): mixed
     {
-        $this->pdo->beginTransaction();
+        $startedTransaction = false;
+        if (!$this->pdo->inTransaction()) {
+            $this->pdo->beginTransaction();
+            $startedTransaction = true;
+        }
 
         try {
             $result = $callback();
-            $this->pdo->commit();
+            if ($startedTransaction) {
+                $this->pdo->commit();
+            }
             return $result;
         } catch (Throwable $e) {
-            $this->pdo->rollBack();
+            if ($startedTransaction) {
+                $this->pdo->rollBack();
+            }
             throw $e;
         }
     }
