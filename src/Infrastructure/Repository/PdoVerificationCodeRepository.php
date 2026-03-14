@@ -76,8 +76,11 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
         return $this->mapRowToDto($row);
     }
 
-    public function incrementAttempts(int $codeId): void
-    {
+    public function incrementAttempts(
+        IdentityTypeEnum $identityType,
+        string $identityId,
+        VerificationPurposeEnum $purpose
+    ): void {
         $stmt = $this->pdo->prepare("
             UPDATE verification_codes
             SET attempts = attempts + 1,
@@ -85,29 +88,53 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
                     WHEN attempts + 1 >= max_attempts THEN 'expired'
                     ELSE status
                 END
-            WHERE id = :id
-            AND status = 'active'
+            WHERE id = (
+                SELECT id FROM (
+                    SELECT id FROM verification_codes
+                    WHERE identity_type = :identity_type
+                      AND identity_id = :identity_id
+                      AND purpose = :purpose
+                      AND status = 'active'
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ) as target_row
+            )
         ");
-        $stmt->execute(['id' => $codeId]);
+        $stmt->execute([
+            'identity_type' => $identityType->value,
+            'identity_id'   => $identityId,
+            'purpose'       => $purpose->value,
+        ]);
     }
 
-    public function markUsed(int $codeId, ?string $usedIp = null): bool
-    {
+    public function markUsed(
+        IdentityTypeEnum $identityType,
+        string $identityId,
+        VerificationPurposeEnum $purpose,
+        string $codeHash,
+        ?string $usedIp = null
+    ): bool {
         $stmt = $this->pdo->prepare("
             UPDATE verification_codes
             SET status = 'used', used_ip = :used_ip, used_at = :now
-            WHERE id = :id
-            AND status = 'active'
-            AND expires_at >= :now
-            AND attempts < max_attempts
+            WHERE identity_type = :identity_type
+              AND identity_id = :identity_id
+              AND purpose = :purpose
+              AND code_hash = :code_hash
+              AND status = 'active'
+              AND expires_at >= :now
+              AND attempts < max_attempts
         ");
         $stmt->execute([
-            'id' => $codeId,
-            'used_ip' => $usedIp,
-            'now' => $this->clock->now()->format('Y-m-d H:i:s')
+            'identity_type' => $identityType->value,
+            'identity_id'   => $identityId,
+            'purpose'       => $purpose->value,
+            'code_hash'     => $codeHash,
+            'used_ip'       => $usedIp,
+            'now'           => $this->clock->now()->format('Y-m-d H:i:s'),
         ]);
 
-        return $stmt->rowCount() === 1;
+        return $stmt->rowCount() > 0;
     }
 
     public function expire(int $codeId): void
@@ -308,5 +335,43 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
         }
 
         return $result;
+    }
+
+    public function acquireGenerationLock(
+        IdentityTypeEnum $identityType,
+        string $identityId,
+        VerificationPurposeEnum $purpose
+    ): void {
+        $now = $this->clock->now()->format('Y-m-d H:i:s');
+
+        // Upsert the lock anchor row
+        $stmtInsert = $this->pdo->prepare("
+            INSERT INTO verification_generation_locks (identity_type, identity_id, purpose, locked_at)
+            VALUES (:identity_type, :identity_id, :purpose, :locked_at)
+            ON DUPLICATE KEY UPDATE locked_at = :locked_at
+        ");
+
+        $params = [
+            'identity_type' => $identityType->value,
+            'identity_id'   => $identityId,
+            'purpose'       => $purpose->value,
+            'locked_at'     => $now,
+        ];
+        $stmtInsert->execute($params);
+
+        // Lock the row exclusively
+        $stmtLock = $this->pdo->prepare("
+            SELECT locked_at
+            FROM verification_generation_locks
+            WHERE identity_type = :identity_type
+              AND identity_id = :identity_id
+              AND purpose = :purpose
+            FOR UPDATE
+        ");
+        $stmtLock->execute([
+            'identity_type' => $identityType->value,
+            'identity_id'   => $identityId,
+            'purpose'       => $purpose->value,
+        ]);
     }
 }

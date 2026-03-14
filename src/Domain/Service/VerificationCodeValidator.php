@@ -13,56 +13,42 @@ use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 
 readonly class VerificationCodeValidator implements VerificationCodeValidatorInterface
 {
-    private const DUMMY_HASH = '91b4d142823f9a29f4d1b0b90a9f1dbe64c5b7c0e92ce409dab66f6cc0b93e63';
     public function __construct(
         private VerificationCodeRepositoryInterface $repository,
-        private ClockInterface $clock,
         private string $secret
     ) {
     }
 
     public function validate(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose, string $plainCode, ?string $usedIp = null): VerificationResult
     {
-        $code = $this->repository->findActive($identityType, $identityId, $purpose);
         $inputHash = hash_hmac('sha256', $plainCode, $this->secret);
-        $dummyHash = self::DUMMY_HASH;
 
-        if ($code === null) {
-            // Constant-time dummy check to prevent timing attacks
-            $_ = hash_equals($dummyHash, $inputHash);
-            return VerificationResult::failure('Invalid code.');
-        }
-
-        if ($code->expiresAt < $this->clock->now()) {
-            $this->repository->expire($code->id);
-            // Dummy check
-            $_ = hash_equals($dummyHash, $inputHash);
-            return VerificationResult::failure('Invalid code.');
-        }
-
-        if ($code->attempts >= $code->maxAttempts) {
-            // Dummy check
-            $_ = hash_equals($dummyHash, $inputHash);
-            return VerificationResult::failure('Invalid code.');
-        }
-
-        if (!hash_equals($code->codeHash, $inputHash)) {
-            $this->repository->incrementAttempts($code->id);
-            return VerificationResult::failure('Invalid code.');
-        }
-
-        // Replay Protection: relies on the atomic SQL update in markUsed()
-        if (!$this->repository->markUsed($code->id, $usedIp)) {
-            return VerificationResult::failure('Invalid code.');
-        }
-
-        $this->repository->revokeAllFor(
+        // Atomic Database-Enforced Validation
+        // This query evaluates status, expiry, attempts, and hash in a single atomic operation.
+        $success = $this->repository->markUsed(
             $identityType,
             $identityId,
             $purpose,
-            [$code->id]
+            $inputHash,
+            $usedIp
         );
 
-        return VerificationResult::success($code->identityType, $code->identityId, $code->purpose);
+        if (!$success) {
+            // If validation failed (wrong guess, expired, or locked out), increment attempts
+            // strictly on the latest active challenge for this identity scope.
+            $this->repository->incrementAttempts($identityType, $identityId, $purpose);
+            return VerificationResult::failure('Invalid code.');
+        }
+
+        // Revoke all other active codes for this scope upon success
+        // Since we don't fetch the code ID into memory before marking used anymore,
+        // we can just revoke all active codes for this purpose (since the successful one is now 'used').
+        $this->repository->revokeAllFor(
+            $identityType,
+            $identityId,
+            $purpose
+        );
+
+        return VerificationResult::success($identityType, $identityId, $purpose);
     }
 }
