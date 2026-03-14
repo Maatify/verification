@@ -85,7 +85,7 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             UPDATE verification_codes
             SET attempts = attempts + 1,
                 status = CASE
-                    WHEN attempts + 1 >= max_attempts THEN 'expired'
+                    WHEN attempts >= max_attempts THEN 'expired'
                     ELSE status
                 END
             WHERE id = (
