@@ -96,6 +96,7 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
                       AND purpose = :purpose
                       AND status = 'active'
                       AND expires_at >= :now
+                      AND attempts < max_attempts
                     ORDER BY created_at DESC
                     LIMIT 1
                 ) as target_row
