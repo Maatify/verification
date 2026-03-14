@@ -14,9 +14,19 @@ interface VerificationCodeRepositoryInterface
 
     public function findActive(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose): ?VerificationCode;
 
-    public function incrementAttempts(int $codeId): void;
+    public function incrementAttempts(
+        IdentityTypeEnum $identityType,
+        string $identityId,
+        VerificationPurposeEnum $purpose
+    ): void;
 
-    public function markUsed(int $codeId, ?string $usedIp = null): bool;
+    public function markUsed(
+        IdentityTypeEnum $identityType,
+        string $identityId,
+        VerificationPurposeEnum $purpose,
+        string $codeHash,
+        ?string $usedIp = null
+    ): bool;
 
     public function expire(int $codeId): void;
 
@@ -50,4 +60,13 @@ interface VerificationCodeRepositoryInterface
         string $identityId,
         VerificationPurposeEnum $purpose
     ): array;
+
+    /**
+     * Acquires a persistent generation lock for the given identity scope to prevent empty-lock race conditions.
+     */
+    public function acquireGenerationLock(
+        IdentityTypeEnum $identityType,
+        string $identityId,
+        VerificationPurposeEnum $purpose
+    ): void;
 }

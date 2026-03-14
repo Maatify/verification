@@ -114,7 +114,6 @@ class VerificationBindings
 
                 return new VerificationCodeValidator(
                     $repo,
-                    $clock,
                     $secret
                 );
             },
