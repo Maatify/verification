@@ -24,8 +24,13 @@ class RedisRateLimiterTest extends TestCase
             $host = getenv('REDIS_HOST') ?: '127.0.0.1';
             $port = (int)(getenv('REDIS_PORT') ?: 6379);
 
-            if (!$this->redis->connect($host, $port)) {
+            if (!@$this->redis->connect($host, $port)) {
                 $this->markTestSkipped('Could not connect to Redis server.');
+            }
+
+            // Simple ping to ensure connection is actually alive
+            if (!@$this->redis->ping()) {
+                $this->markTestSkipped('Redis server is not responding to ping.');
             }
 
             $this->limiter = new RedisRateLimiter($this->redis, 'test_prefix');
@@ -37,11 +42,18 @@ class RedisRateLimiterTest extends TestCase
     protected function tearDown(): void
     {
         if ($this->redis) {
-            $keys = $this->redis->keys('test_prefix:*');
-            if (!empty($keys)) {
-                $this->redis->del($keys);
+            try {
+                $keys = $this->redis->keys('test_prefix:*');
+                if (!empty($keys)) {
+                    $this->redis->del($keys);
+                }
+            } catch (\Exception $e) {
+                // Ignore cleanup errors if server went away
+            } finally {
+                try {
+                    $this->redis->close();
+                } catch (\Exception $e) {}
             }
-            $this->redis->close();
         }
     }
 
@@ -56,27 +68,31 @@ class RedisRateLimiterTest extends TestCase
         /** @var RedisRateLimiter $limiter */
         $limiter = $this->limiter;
 
-        $limiter->hit(
-            IdentityTypeEnum::User,
-            'user1',
-            VerificationPurposeEnum::EmailVerification
-        );
+        try {
+            $limiter->hit(
+                IdentityTypeEnum::User,
+                'user1',
+                VerificationPurposeEnum::EmailVerification
+            );
 
-        $keys = $redis->keys('test_prefix:rate:user:user1:email_verification:*');
-        $this->assertNotEmpty($keys);
+            $keys = $redis->keys('test_prefix:rate:user:user1:email_verification:*');
+            $this->assertNotEmpty($keys);
 
-        $val = $redis->get($keys[0]);
-        $this->assertIsString($val);
-        $this->assertEquals(1, (int)$val);
+            $val = $redis->get($keys[0]);
+            $this->assertIsString($val);
+            $this->assertEquals(1, (int)$val);
 
-        $limiter->hit(
-            IdentityTypeEnum::User,
-            'user1',
-            VerificationPurposeEnum::EmailVerification
-        );
+            $limiter->hit(
+                IdentityTypeEnum::User,
+                'user1',
+                VerificationPurposeEnum::EmailVerification
+            );
 
-        $val = $redis->get($keys[0]);
-        $this->assertIsString($val);
-        $this->assertEquals(2, (int)$val);
+            $val = $redis->get($keys[0]);
+            $this->assertIsString($val);
+            $this->assertEquals(2, (int)$val);
+        } catch (\RedisException $e) {
+            $this->markTestSkipped('Redis server went away during test: ' . $e->getMessage());
+        }
     }
 }
