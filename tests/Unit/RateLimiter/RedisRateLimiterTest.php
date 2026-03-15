@@ -47,11 +47,15 @@ class RedisRateLimiterTest extends TestCase
                 // Instead of KEYS, we can use an iterator (SCAN) to safely find keys, or just
                 // manually delete the exact keys we know we created.
                 $iterator = null;
-                while ($keys = $this->redis->scan($iterator, $this->prefix . ':*')) {
+
+                do {
+                    $keys = $this->redis->scan($iterator, $this->prefix . ':*');
+
                     if ($keys !== false) {
                         $this->redis->del($keys);
                     }
-                }
+
+                } while ($iterator !== 0);
             } catch (\Exception $e) {
                 // Ignore cleanup errors if server went away
             } finally {
@@ -83,11 +87,17 @@ class RedisRateLimiterTest extends TestCase
             // Fetch keys safely via SCAN to avoid KEYS O(N) operation
             $iterator = null;
             $foundKeys = [];
-            while ($scannedKeys = $redis->scan($iterator, $this->prefix . ':rate:user:user1:email_verification:*')) {
-                foreach ($scannedKeys as $k) {
-                    $foundKeys[] = $k;
+
+            do {
+                $scannedKeys = $redis->scan($iterator, $this->prefix . ':rate:user:user1:email_verification:*');
+
+                if ($scannedKeys !== false) {
+                    foreach ($scannedKeys as $k) {
+                        $foundKeys[] = $k;
+                    }
                 }
-            }
+
+            } while ($iterator !== 0);
 
             $this->assertNotEmpty($foundKeys);
 
