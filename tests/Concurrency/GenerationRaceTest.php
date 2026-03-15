@@ -28,19 +28,9 @@ class GenerationRaceTest extends TestCase
             $this->pdo->exec("CREATE DATABASE IF NOT EXISTS `{$this->db}`");
             $this->pdo->exec("USE `{$this->db}`");
 
-            // Recreate tables
-            $this->pdo->exec("DROP TABLE IF EXISTS `verification_codes`");
-            $this->pdo->exec("DROP TABLE IF EXISTS `verification_generation_locks`");
-
-            $codesSql = file_get_contents(__DIR__ . '/../../database/verification_codes.sql');
-            if ($codesSql !== false) {
-                $this->pdo->exec($codesSql);
-            }
-
-            $locksSql = file_get_contents(__DIR__ . '/../../database/verification_generation_locks.sql');
-            if ($locksSql !== false) {
-                $this->pdo->exec($locksSql);
-            }
+            // Clear tables instead of recreating
+            $this->pdo->exec("DELETE FROM `verification_codes`");
+            $this->pdo->exec("DELETE FROM `verification_generation_locks`");
         } catch (\PDOException $e) {
             $this->markTestSkipped("Database connection failed: " . $e->getMessage());
         }

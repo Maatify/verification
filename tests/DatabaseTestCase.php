@@ -17,8 +17,8 @@ abstract class DatabaseTestCase extends TestCase
         // and we want isolated tests, we should just truncate tables before each test
         // rather than using BEGIN/ROLLBACK transactions.
 
-        $pdo->exec("TRUNCATE TABLE `verification_codes`");
-        $pdo->exec("TRUNCATE TABLE `verification_generation_locks`");
+        $pdo->exec("DELETE FROM `verification_codes`");
+        $pdo->exec("DELETE FROM `verification_generation_locks`");
     }
 
     protected function getPdo(): PDO

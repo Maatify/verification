@@ -12,6 +12,7 @@ class RedisRateLimiterTest extends TestCase
 {
     private ?\Redis $redis = null;
     private ?RedisRateLimiter $limiter = null;
+    private string $prefix = 'test_prefix';
 
     protected function setUp(): void
     {
@@ -33,7 +34,7 @@ class RedisRateLimiterTest extends TestCase
                 $this->markTestSkipped('Redis server is not responding to ping.');
             }
 
-            $this->limiter = new RedisRateLimiter($this->redis, 'test_prefix');
+            $this->limiter = new RedisRateLimiter($this->redis, $this->prefix);
         } catch (\Exception $e) {
             $this->markTestSkipped('Redis connection failed: ' . $e->getMessage());
         }
@@ -43,9 +44,13 @@ class RedisRateLimiterTest extends TestCase
     {
         if ($this->redis) {
             try {
-                $keys = $this->redis->keys('test_prefix:*');
-                if (!empty($keys)) {
-                    $this->redis->del($keys);
+                // Instead of KEYS, we can use an iterator (SCAN) to safely find keys, or just
+                // manually delete the exact keys we know we created.
+                $iterator = null;
+                while ($keys = $this->redis->scan($iterator, $this->prefix . ':*')) {
+                    if ($keys !== false) {
+                        $this->redis->del($keys);
+                    }
                 }
             } catch (\Exception $e) {
                 // Ignore cleanup errors if server went away
@@ -75,10 +80,18 @@ class RedisRateLimiterTest extends TestCase
                 VerificationPurposeEnum::EmailVerification
             );
 
-            $keys = $redis->keys('test_prefix:rate:user:user1:email_verification:*');
-            $this->assertNotEmpty($keys);
+            // Fetch keys safely via SCAN to avoid KEYS O(N) operation
+            $iterator = null;
+            $foundKeys = [];
+            while ($scannedKeys = $redis->scan($iterator, $this->prefix . ':rate:user:user1:email_verification:*')) {
+                foreach ($scannedKeys as $k) {
+                    $foundKeys[] = $k;
+                }
+            }
 
-            $val = $redis->get($keys[0]);
+            $this->assertNotEmpty($foundKeys);
+
+            $val = $redis->get($foundKeys[0]);
             $this->assertIsString($val);
             $this->assertEquals(1, (int)$val);
 
@@ -88,7 +101,7 @@ class RedisRateLimiterTest extends TestCase
                 VerificationPurposeEnum::EmailVerification
             );
 
-            $val = $redis->get($keys[0]);
+            $val = $redis->get($foundKeys[0]);
             $this->assertIsString($val);
             $this->assertEquals(2, (int)$val);
         } catch (\RedisException $e) {
