@@ -36,9 +36,9 @@ jobs:
     env:
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
-      DB_NAME: verification_test
-      DB_USER: root
-      DB_PASS: root
+      DB_DATABASE: verification_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
 
       # Redis configuration for RateLimiter tests
       REDIS_HOST: 127.0.0.1
