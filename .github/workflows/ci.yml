@@ -154,6 +154,17 @@ jobs:
           done
 
       # -------------------------------------------------
+      # Wait for Redis to Become Ready
+      # -------------------------------------------------
+      - name: Wait for Redis
+        run: |
+          sudo apt-get install -y redis-tools
+          for i in {1..20}; do
+            redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" ping && break
+            sleep 2
+          done
+
+      # -------------------------------------------------
       # 9) Create Test Database + Import Schema
       # -------------------------------------------------
       - name: Create test database and import schema
