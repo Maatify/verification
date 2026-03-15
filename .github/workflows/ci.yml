@@ -102,7 +102,7 @@ jobs:
           php-version: ${{ matrix.php }}
           tools: composer
           coverage: none
-          extensions: redis
+          extensions: redis, pcntl
 
       # -------------------------------------------------
       # 3) Cache Composer Dependencies
