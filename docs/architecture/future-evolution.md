@@ -6,12 +6,12 @@ The current `Maatify\Verification` module provides a secure and framework-agnost
 
 It manages the full lifecycle of a verification attempt:
 
-- code generation
-- secure hashing
-- attempt tracking
-- expiration
-- brute-force protection
-- auditing via IP tracking
+* code generation
+* secure hashing
+* attempt tracking
+* expiration
+* brute-force protection
+* auditing via IP tracking
 
 While the current implementation focuses on **OTP-style verification codes**, the architecture intentionally leaves room for a broader evolution.
 
@@ -27,12 +27,12 @@ Instead of only supporting OTP codes, the module could support multiple **verifi
 
 Example verification mechanisms:
 
-- One-Time Password (OTP)
-- Magic Links
-- Time-based OTP (TOTP)
-- External verification challenges
-- Passkey / WebAuthn based verification
-- Multi-factor verification workflows
+* One-Time Password (OTP)
+* Magic Links
+* Time-based OTP (TOTP)
+* External verification challenges
+* Passkey / WebAuthn based verification
+* Multi-factor verification workflows
 
 In such a system, verification becomes a **challenge lifecycle**, not just a code validation.
 
@@ -44,12 +44,12 @@ A **Verification Challenge** represents a temporary security requirement that mu
 
 Example scenarios:
 
-| Scenario | Challenge |
-|--------|--------|
-Email verification | OTP challenge |
-Password reset | OTP or Magic Link |
-Telegram channel linking | Code challenge |
-Step-up authentication | TOTP challenge |
+| Scenario                 | Challenge         |
+| ------------------------ | ----------------- |
+| Email verification       | OTP challenge     |
+| Password reset           | OTP or Magic Link |
+| Telegram channel linking | Code challenge    |
+| Step-up authentication   | TOTP challenge    |
 
 In this model the system manages **challenges**, not only codes.
 
@@ -62,7 +62,6 @@ A possible future architecture may introduce the concept of **verification strat
 Example:
 
 ```
-
 Verification Engine
 │
 ├── VerificationChallenge
@@ -76,7 +75,6 @@ Verification Engine
 ├── ChallengeGenerator
 ├── ChallengeValidator
 └── ChallengeRepository
-
 ```
 
 Each strategy would implement a unified interface responsible for generating and validating its own challenge format.
@@ -87,10 +85,10 @@ Each strategy would implement a unified interface responsible for generating and
 
 This design enables:
 
-- reuse of the verification lifecycle logic
-- unified security auditing
-- consistent attempt tracking
-- a single extensible verification engine
+* reuse of the verification lifecycle logic
+* unified security auditing
+* consistent attempt tracking
+* a single extensible verification engine
 
 It prevents each application module from implementing its own verification system.
 
@@ -114,14 +112,104 @@ This document only describes a **possible architectural evolution**, not a commi
 
 ---
 
+# Delivery Responsibility
+
+The `Maatify\Verification` module intentionally **does not handle message delivery**.
+
+The responsibility of this module is strictly limited to the **verification challenge lifecycle**, including:
+
+* challenge generation
+* secure hashing
+* storage and persistence
+* expiration handling
+* attempt tracking
+* brute-force protection
+* validation
+
+Sending verification codes or links through external channels such as:
+
+* Email
+* SMS
+* Telegram
+* Push notifications
+* external messaging systems
+
+is **explicitly outside the scope of this module**.
+
+---
+
+# Delivery Architecture
+
+Applications integrating `Maatify\Verification` are free to implement their own delivery mechanism.
+
+Typical implementations may include:
+
+* dedicated messaging services
+* notification microservices
+* event-driven delivery pipelines
+* queue-based messaging systems
+
+Example architecture:
+
+```
+Application
+│
+├── Verification Engine (Maatify\Verification)
+│
+└── Delivery System
+      ├── Email Service
+      ├── SMS Service
+      ├── Telegram Bot
+      └── Notification Microservice
+```
+
+The verification module only produces **verification challenges or codes**.
+
+How those codes are delivered to the end user is **an application-level concern**.
+
+---
+
+# Architectural Boundary
+
+To preserve modularity and framework independence, the verification module **must not depend on**:
+
+* SMTP clients
+* SMS gateways
+* messaging APIs
+* HTTP delivery clients
+* queue systems
+
+These integrations belong to the **application layer**, not the verification engine.
+
+---
+
+# Design Philosophy
+
+This separation ensures that the module remains:
+
+* framework-agnostic
+* transport-agnostic
+* reusable across different architectures
+
+This allows the same verification engine to operate in environments such as:
+
+* monolithic applications
+* microservice architectures
+* event-driven systems
+* serverless platforms
+
+without coupling the verification logic to a specific delivery mechanism.
+
+---
+
 # Guideline for Future Contributors
 
 If the module evolves toward a challenge system, future implementations should:
 
-- preserve existing domain contracts when possible
-- introduce extensibility through strategy interfaces
-- keep the core domain framework-agnostic
-- maintain strict security guarantees (hashing, brute-force protection)
+* preserve existing domain contracts when possible
+* introduce extensibility through strategy interfaces
+* keep the core domain framework-agnostic
+* maintain strict security guarantees (hashing, brute-force protection)
 
 ---
 
@@ -130,17 +218,13 @@ If the module evolves toward a challenge system, future implementations should:
 Current system:
 
 ```
-
 Verification Codes
-
 ```
 
 Possible future system:
 
 ```
-
 Verification Challenge Engine
-
 ```
 
 This evolution would transform the module from a simple OTP manager into a reusable **security verification platform**.
