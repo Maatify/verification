@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests;
@@ -17,8 +18,8 @@ abstract class DatabaseTestCase extends TestCase
         // and we want isolated tests, we should just truncate tables before each test
         // rather than using BEGIN/ROLLBACK transactions.
 
-        $pdo->exec("DELETE FROM `verification_codes`");
-        $pdo->exec("DELETE FROM `verification_generation_locks`");
+        $pdo->exec('DELETE FROM `verification_codes`');
+        $pdo->exec('DELETE FROM `verification_generation_locks`');
     }
 
     protected function getPdo(): PDO
@@ -43,12 +44,12 @@ abstract class DatabaseTestCase extends TestCase
                     PDO::ATTR_EMULATE_PREPARES   => true,
                 ]);
             } catch (\PDOException $e) {
-                $this->markTestSkipped("Database connection failed: " . $e->getMessage());
+                $this->markTestSkipped('Database connection failed: ' . $e->getMessage());
             }
 
             // Apply schema
-            self::$sharedPdo->exec("DROP TABLE IF EXISTS `verification_codes`");
-            self::$sharedPdo->exec("DROP TABLE IF EXISTS `verification_generation_locks`");
+            self::$sharedPdo->exec('DROP TABLE IF EXISTS `verification_codes`');
+            self::$sharedPdo->exec('DROP TABLE IF EXISTS `verification_generation_locks`');
 
             $codesSql = file_get_contents(__DIR__ . '/../database/verification_codes.sql');
             if ($codesSql !== false) {

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Integration\Generator;
@@ -35,7 +36,7 @@ class MaxActiveCodesTest extends DatabaseTestCase
             $clock->modify('+' . ($policy->resendCooldownSeconds + 1) . ' seconds');
         }
 
-        $stmt = $this->getPdo()->query("SELECT status FROM verification_codes ORDER BY created_at ASC");
+        $stmt = $this->getPdo()->query('SELECT status FROM verification_codes ORDER BY created_at ASC');
         $this->assertInstanceOf(PDOStatement::class, $stmt);
         $rows = $stmt->fetchAll();
 

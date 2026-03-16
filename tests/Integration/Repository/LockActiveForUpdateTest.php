@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Integration\Repository;
@@ -34,7 +35,9 @@ class LockActiveForUpdateTest extends DatabaseTestCase
         $repository->store($code);
 
         $activeCodes = $repository->lockActiveForUpdate(
-            IdentityTypeEnum::User, 'user123', VerificationPurposeEnum::EmailVerification
+            IdentityTypeEnum::User,
+            'user123',
+            VerificationPurposeEnum::EmailVerification
         );
 
         $this->assertCount(1, $activeCodes);

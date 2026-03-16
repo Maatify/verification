@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Integration\Repository;
@@ -40,7 +41,7 @@ class AttemptsExpireTransitionTest extends DatabaseTestCase
             VerificationPurposeEnum::EmailVerification
         );
 
-        $stmt = $this->getPdo()->query("SELECT attempts, status FROM verification_codes");
+        $stmt = $this->getPdo()->query('SELECT attempts, status FROM verification_codes');
         $this->assertInstanceOf(PDOStatement::class, $stmt);
         $rows = $stmt->fetchAll();
 

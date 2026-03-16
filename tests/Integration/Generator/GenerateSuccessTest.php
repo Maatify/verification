@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Integration\Generator;
@@ -40,7 +41,7 @@ class GenerateSuccessTest extends DatabaseTestCase
         $this->assertEquals(VerificationCodeStatus::ACTIVE, $result->entity->status);
         $this->assertEquals(0, $result->entity->attempts);
 
-        $stmt = $this->getPdo()->query("SELECT * FROM verification_codes");
+        $stmt = $this->getPdo()->query('SELECT * FROM verification_codes');
         $this->assertInstanceOf(PDOStatement::class, $stmt);
         $rows = $stmt->fetchAll();
         $this->assertCount(1, $rows);
