@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Unit\RateLimiter;
@@ -61,7 +62,8 @@ class RedisRateLimiterTest extends TestCase
             } finally {
                 try {
                     $this->redis->close();
-                } catch (\Exception $e) {}
+                } catch (\Exception $e) {
+                }
             }
         }
     }

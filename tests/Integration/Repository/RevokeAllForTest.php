@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Integration\Repository;
@@ -27,7 +28,10 @@ class RevokeAllForTest extends DatabaseTestCase
             VerificationPurposeEnum::EmailVerification,
             'hash1',
             VerificationCodeStatus::ACTIVE,
-            0, 3, $clock->now()->modify('+15 minutes'), $clock->now()
+            0,
+            3,
+            $clock->now()->modify('+15 minutes'),
+            $clock->now()
         );
 
         $code2 = new VerificationCode(
@@ -37,13 +41,16 @@ class RevokeAllForTest extends DatabaseTestCase
             VerificationPurposeEnum::EmailVerification,
             'hash2',
             VerificationCodeStatus::ACTIVE,
-            0, 3, $clock->now()->modify('+15 minutes'), $clock->now()
+            0,
+            3,
+            $clock->now()->modify('+15 minutes'),
+            $clock->now()
         );
 
         $repository->store($code1);
         $repository->store($code2);
 
-        $stmt = $this->getPdo()->query("SELECT id FROM verification_codes ORDER BY id DESC LIMIT 1");
+        $stmt = $this->getPdo()->query('SELECT id FROM verification_codes ORDER BY id DESC LIMIT 1');
         $this->assertInstanceOf(PDOStatement::class, $stmt);
         $lastId = (int)$stmt->fetchColumn();
 
@@ -54,7 +61,7 @@ class RevokeAllForTest extends DatabaseTestCase
             [$lastId]
         );
 
-        $stmt = $this->getPdo()->query("SELECT status FROM verification_codes ORDER BY id ASC");
+        $stmt = $this->getPdo()->query('SELECT status FROM verification_codes ORDER BY id ASC');
         $this->assertInstanceOf(PDOStatement::class, $stmt);
         $rows = $stmt->fetchAll();
 

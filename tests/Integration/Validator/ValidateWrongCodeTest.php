@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Integration\Validator;
@@ -52,7 +53,7 @@ class ValidateWrongCodeTest extends DatabaseTestCase
 
         $this->assertFalse($result->success);
 
-        $stmt = $this->getPdo()->query("SELECT attempts, status FROM verification_codes");
+        $stmt = $this->getPdo()->query('SELECT attempts, status FROM verification_codes');
         $this->assertInstanceOf(PDOStatement::class, $stmt);
         $row = $stmt->fetch();
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Integration\Repository;
@@ -27,7 +28,10 @@ class CountActiveWindowTest extends DatabaseTestCase
         $repository->store($codeNew);
 
         $count = $repository->countActiveInWindow(
-            IdentityTypeEnum::User, 'user1', VerificationPurposeEnum::EmailVerification, $clock->now()->modify('-10 minutes')
+            IdentityTypeEnum::User,
+            'user1',
+            VerificationPurposeEnum::EmailVerification,
+            $clock->now()->modify('-10 minutes')
         );
 
         $this->assertEquals(1, $count);
