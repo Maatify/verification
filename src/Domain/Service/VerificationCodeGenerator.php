@@ -16,6 +16,7 @@ use Maatify\Verification\Domain\DTO\VerificationCode;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationCodeStatus;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
+use Maatify\Verification\Domain\Exception\VerificationGenerationRateLimitedException;
 use RuntimeException;
 
 readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInterface
@@ -46,7 +47,7 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
             $countInWindow = $this->repository->countActiveInWindow($identityType, $identityId, $purpose, $since);
 
             if ($countInWindow >= $policy->maxCodesPerWindow) {
-                throw new RuntimeException('Too many codes generated in the current window.');
+                throw new VerificationGenerationRateLimitedException('Too many codes generated in the current window.');
             }
 
             // 3. Generation Cooldown & Multi-Code Window
@@ -61,7 +62,7 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
                 $secondsSinceLastCode = $now->getTimestamp() - $latestCode->createdAt->getTimestamp();
 
                 if ($secondsSinceLastCode < $policy->resendCooldownSeconds) {
-                    throw new RuntimeException('Please wait before requesting a new code.');
+                    throw new VerificationGenerationRateLimitedException('Please wait before requesting a new code.');
                 }
             }
 

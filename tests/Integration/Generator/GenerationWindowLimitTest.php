@@ -8,9 +8,9 @@ use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 use Maatify\Verification\Domain\Service\VerificationCodeGenerator;
 use Maatify\Verification\Domain\Service\VerificationCodePolicyResolver;
+use Maatify\Verification\Domain\Exception\VerificationGenerationRateLimitedException;
 use Maatify\Verification\Infrastructure\Repository\PdoVerificationCodeRepository;
 use Maatify\Verification\Infrastructure\Transaction\PdoTransactionManager;
-use RuntimeException;
 use Tests\DatabaseTestCase;
 use Tests\MockClock;
 
@@ -41,7 +41,7 @@ class GenerationWindowLimitTest extends DatabaseTestCase
             $clock->modify('+2 minutes');
         }
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(VerificationGenerationRateLimitedException::class);
         $this->expectExceptionMessage('Too many codes generated in the current window.');
 
         $generator->generate(IdentityTypeEnum::User, 'user3', VerificationPurposeEnum::EmailVerification);

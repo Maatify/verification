@@ -7,6 +7,7 @@ namespace Tests\Integration\Validator;
 use Maatify\Verification\Domain\DTO\VerificationCode;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationCodeStatus;
+use Maatify\Verification\Domain\Enum\VerificationFailureEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 use Maatify\Verification\Domain\Service\VerificationCodeValidator;
 use Maatify\Verification\Infrastructure\Repository\PdoVerificationCodeRepository;
@@ -53,6 +54,7 @@ class ValidateAttemptsExhaustedTest extends DatabaseTestCase
         );
 
         $this->assertFalse($result->success);
+        $this->assertEquals(VerificationFailureEnum::ATTEMPTS_EXCEEDED, $result->failureCode);
 
         // Verify marked as expired
         $stmt = $this->getPdo()->query('SELECT status, attempts FROM verification_codes');

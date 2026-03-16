@@ -12,7 +12,9 @@ use Maatify\Verification\Domain\DTO\VerificationCode;
 use Maatify\Verification\Domain\DTO\VerificationResult;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationCodeStatus;
+use Maatify\Verification\Domain\Enum\VerificationFailureEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
+use Maatify\Verification\Domain\Exception\VerificationGenerationRateLimitedException;
 use PHPUnit\Framework\TestCase;
 
 class VerificationServiceTest extends TestCase
@@ -90,7 +92,7 @@ class VerificationServiceTest extends TestCase
             ->expects($this->once())
             ->method('validate')
             ->with(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification, 'wrong')
-            ->willReturn(VerificationResult::failure('Invalid code'));
+            ->willReturn(VerificationResult::failure(VerificationFailureEnum::INVALID_CODE, 'Invalid code'));
 
         $this->expectException(\Maatify\Verification\Application\Exceptions\VerificationInvalidCodeException::class);
 
@@ -108,7 +110,7 @@ class VerificationServiceTest extends TestCase
             ->expects($this->once())
             ->method('validate')
             ->with(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification, 'expired_code')
-            ->willReturn(VerificationResult::failure('Code has expired.'));
+            ->willReturn(VerificationResult::failure(VerificationFailureEnum::EXPIRED, 'Code has expired.'));
 
         $this->expectException(\Maatify\Verification\Application\Exceptions\VerificationExpiredException::class);
 
@@ -126,7 +128,7 @@ class VerificationServiceTest extends TestCase
             ->expects($this->once())
             ->method('validate')
             ->with(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification, 'attempts_exceeded_code')
-            ->willReturn(VerificationResult::failure('Maximum attempts exceeded.'));
+            ->willReturn(VerificationResult::failure(VerificationFailureEnum::ATTEMPTS_EXCEEDED, 'Maximum attempts exceeded.'));
 
         $this->expectException(\Maatify\Verification\Application\Exceptions\VerificationAttemptsExceededException::class);
 
@@ -144,7 +146,7 @@ class VerificationServiceTest extends TestCase
             ->expects($this->once())
             ->method('generate')
             ->with(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification)
-            ->willThrowException(new \RuntimeException('Too many codes generated in the current window.'));
+            ->willThrowException(new VerificationGenerationRateLimitedException('Too many codes generated in the current window.'));
 
         $this->expectException(\Maatify\Verification\Application\Exceptions\VerificationGenerationBlockedException::class);
 

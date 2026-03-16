@@ -7,6 +7,7 @@ namespace Tests\Integration\Validator;
 use Maatify\Verification\Domain\DTO\VerificationCode;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationCodeStatus;
+use Maatify\Verification\Domain\Enum\VerificationFailureEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 use Maatify\Verification\Domain\Service\VerificationCodeValidator;
 use Maatify\Verification\Infrastructure\Repository\PdoVerificationCodeRepository;
@@ -52,6 +53,7 @@ class ValidateWrongCodeTest extends DatabaseTestCase
         );
 
         $this->assertFalse($result->success);
+        $this->assertEquals(VerificationFailureEnum::INVALID_CODE, $result->failureCode);
 
         $stmt = $this->getPdo()->query('SELECT attempts, status FROM verification_codes');
         $this->assertInstanceOf(PDOStatement::class, $stmt);

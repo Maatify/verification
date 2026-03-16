@@ -8,6 +8,7 @@ use Maatify\Verification\Domain\Contracts\VerificationCodeRepositoryInterface;
 use Maatify\Verification\Domain\Contracts\VerificationCodeValidatorInterface;
 use Maatify\Verification\Domain\DTO\VerificationResult;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
+use Maatify\Verification\Domain\Enum\VerificationFailureEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 
 readonly class VerificationCodeValidator implements VerificationCodeValidatorInterface
@@ -21,6 +22,12 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
     public function validate(IdentityTypeEnum $identityType, string $identityId, VerificationPurposeEnum $purpose, string $plainCode, ?string $usedIp = null): VerificationResult
     {
         $inputHash = hash_hmac('sha256', $plainCode, $this->secret);
+
+        $activeCodes = $this->repository->findAllActive($identityType, $identityId, $purpose);
+
+        if (empty($activeCodes)) {
+            return VerificationResult::failure(VerificationFailureEnum::EXPIRED, 'Code has expired or does not exist.');
+        }
 
         // Atomic Database-Enforced Validation
         // This query evaluates status, expiry, attempts, and hash in a single atomic operation.
@@ -36,7 +43,15 @@ readonly class VerificationCodeValidator implements VerificationCodeValidatorInt
             // If validation failed (wrong guess, expired, or locked out), increment attempts
             // strictly on the latest active challenge for this identity scope.
             $this->repository->incrementAttempts($identityType, $identityId, $purpose);
-            return VerificationResult::failure('Invalid code.');
+
+            // Check if attempts exceeded to return a specific failure enum
+            $latestCode = $this->repository->findActive($identityType, $identityId, $purpose);
+            if ($latestCode === null) {
+                // If the code is no longer active after incrementing, it means it expired due to attempts limit
+                return VerificationResult::failure(VerificationFailureEnum::ATTEMPTS_EXCEEDED, 'Maximum attempts exceeded.');
+            }
+
+            return VerificationResult::failure(VerificationFailureEnum::INVALID_CODE, 'Invalid code.');
         }
 
         // Revoke all other active codes for this scope upon success

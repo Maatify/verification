@@ -7,6 +7,7 @@ namespace Tests\Integration\Validator;
 use Maatify\Verification\Domain\DTO\VerificationCode;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationCodeStatus;
+use Maatify\Verification\Domain\Enum\VerificationFailureEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 use Maatify\Verification\Domain\Service\VerificationCodeValidator;
 use Maatify\Verification\Infrastructure\Repository\PdoVerificationCodeRepository;
@@ -60,5 +61,6 @@ class ValidateReplayAttackTest extends DatabaseTestCase
             $plainCode
         );
         $this->assertFalse($result2->success);
+        $this->assertEquals(VerificationFailureEnum::EXPIRED, $result2->failureCode);
     }
 }

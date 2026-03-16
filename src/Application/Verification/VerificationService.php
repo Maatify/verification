@@ -12,8 +12,9 @@ use Maatify\Verification\Application\Exceptions\VerificationInvalidCodeException
 use Maatify\Verification\Domain\Contracts\VerificationCodeGeneratorInterface;
 use Maatify\Verification\Domain\Contracts\VerificationCodeValidatorInterface;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
+use Maatify\Verification\Domain\Enum\VerificationFailureEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
-use RuntimeException;
+use Maatify\Verification\Domain\Exception\VerificationGenerationRateLimitedException;
 use Throwable;
 
 readonly class VerificationService implements VerificationServiceInterface
@@ -33,12 +34,8 @@ readonly class VerificationService implements VerificationServiceInterface
             $generated = $this->generator->generate($identityType, $identity, $purpose);
 
             return $generated->plainCode;
-        } catch (RuntimeException $e) {
-            if (str_contains($e->getMessage(), 'Too many codes') || str_contains($e->getMessage(), 'wait before requesting')) {
-                throw new VerificationGenerationBlockedException($e->getMessage(), 0, $e);
-            }
-
-            throw new VerificationInternalException('An internal verification error occurred.', 0, $e);
+        } catch (VerificationGenerationRateLimitedException $e) {
+            throw new VerificationGenerationBlockedException($e->getMessage(), 0, $e);
         } catch (Throwable $e) {
             throw new VerificationInternalException('An unexpected verification error occurred.', 0, $e);
         }
@@ -54,15 +51,12 @@ readonly class VerificationService implements VerificationServiceInterface
             $result = $this->validator->validate($identityType, $identity, $purpose, $code);
 
             if (! $result->success) {
-                if (str_contains($result->reason, 'expired')) {
-                    throw new VerificationExpiredException($result->reason);
-                }
-
-                if (str_contains($result->reason, 'attempts')) {
-                    throw new VerificationAttemptsExceededException($result->reason);
-                }
-
-                throw new VerificationInvalidCodeException($result->reason);
+                return match ($result->failureCode) {
+                    VerificationFailureEnum::INVALID_CODE => throw new VerificationInvalidCodeException($result->reason),
+                    VerificationFailureEnum::EXPIRED => throw new VerificationExpiredException($result->reason),
+                    VerificationFailureEnum::ATTEMPTS_EXCEEDED => throw new VerificationAttemptsExceededException($result->reason),
+                    default => throw new VerificationInternalException($result->reason),
+                };
             }
 
             return true;
@@ -82,12 +76,8 @@ readonly class VerificationService implements VerificationServiceInterface
             $generated = $this->generator->generate($identityType, $identity, $purpose);
 
             return $generated->plainCode;
-        } catch (RuntimeException $e) {
-            if (str_contains($e->getMessage(), 'Too many codes') || str_contains($e->getMessage(), 'wait before requesting')) {
-                throw new VerificationGenerationBlockedException($e->getMessage(), 0, $e);
-            }
-
-            throw new VerificationInternalException('An internal verification error occurred.', 0, $e);
+        } catch (VerificationGenerationRateLimitedException $e) {
+            throw new VerificationGenerationBlockedException($e->getMessage(), 0, $e);
         } catch (Throwable $e) {
             throw new VerificationInternalException('An unexpected verification error occurred.', 0, $e);
         }
