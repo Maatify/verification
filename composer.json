@@ -6,10 +6,10 @@
 
   "require": {
     "php": "^8.2",
-    "ext-pdo": "*",
     "ext-json": "*",
+    "ext-pdo": "*",
     "ext-redis": "*",
-
+    "maatify/exceptions": "^1.1",
     "maatify/shared-common": "^1.0"
   },
 

@@ -84,7 +84,7 @@ class VerificationServiceTest extends TestCase
         $this->assertTrue($result);
     }
 
-    public function testVerifyCodeReturnsFalseOnInvalidCode(): void
+    public function testVerifyCodeThrowsExceptionOnInvalidCode(): void
     {
         $this->validator
             ->expects($this->once())
@@ -92,14 +92,67 @@ class VerificationServiceTest extends TestCase
             ->with(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification, 'wrong')
             ->willReturn(VerificationResult::failure('Invalid code'));
 
-        $result = $this->service->verifyCode(
+        $this->expectException(\Maatify\Verification\Application\Exceptions\VerificationInvalidCodeException::class);
+
+        $this->service->verifyCode(
             IdentityTypeEnum::User,
             'user@example.com',
             VerificationPurposeEnum::EmailVerification,
             'wrong'
         );
+    }
 
-        $this->assertFalse($result);
+    public function testVerifyCodeThrowsExceptionOnExpiredCode(): void
+    {
+        $this->validator
+            ->expects($this->once())
+            ->method('validate')
+            ->with(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification, 'expired_code')
+            ->willReturn(VerificationResult::failure('Code has expired.'));
+
+        $this->expectException(\Maatify\Verification\Application\Exceptions\VerificationExpiredException::class);
+
+        $this->service->verifyCode(
+            IdentityTypeEnum::User,
+            'user@example.com',
+            VerificationPurposeEnum::EmailVerification,
+            'expired_code'
+        );
+    }
+
+    public function testVerifyCodeThrowsExceptionOnAttemptsExceeded(): void
+    {
+        $this->validator
+            ->expects($this->once())
+            ->method('validate')
+            ->with(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification, 'attempts_exceeded_code')
+            ->willReturn(VerificationResult::failure('Maximum attempts exceeded.'));
+
+        $this->expectException(\Maatify\Verification\Application\Exceptions\VerificationAttemptsExceededException::class);
+
+        $this->service->verifyCode(
+            IdentityTypeEnum::User,
+            'user@example.com',
+            VerificationPurposeEnum::EmailVerification,
+            'attempts_exceeded_code'
+        );
+    }
+
+    public function testStartVerificationThrowsExceptionOnBlockedGeneration(): void
+    {
+        $this->generator
+            ->expects($this->once())
+            ->method('generate')
+            ->with(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification)
+            ->willThrowException(new \RuntimeException('Too many codes generated in the current window.'));
+
+        $this->expectException(\Maatify\Verification\Application\Exceptions\VerificationGenerationBlockedException::class);
+
+        $this->service->startVerification(
+            IdentityTypeEnum::User,
+            'user@example.com',
+            VerificationPurposeEnum::EmailVerification
+        );
     }
 
     public function testResendVerificationGeneratesNewCode(): void
