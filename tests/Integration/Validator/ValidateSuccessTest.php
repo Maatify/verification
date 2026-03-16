@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Integration\Validator;
@@ -52,7 +53,7 @@ class ValidateSuccessTest extends DatabaseTestCase
 
         $this->assertTrue($result->success);
 
-        $stmt = $this->getPdo()->query("SELECT status FROM verification_codes");
+        $stmt = $this->getPdo()->query('SELECT status FROM verification_codes');
         $this->assertInstanceOf(PDOStatement::class, $stmt);
         $this->assertEquals('used', $stmt->fetchColumn());
     }

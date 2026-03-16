@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Integration\Repository;
@@ -36,7 +37,7 @@ class StoreCodeTest extends DatabaseTestCase
 
         $repository->store($code);
 
-        $stmt = $this->getPdo()->query("SELECT * FROM verification_codes");
+        $stmt = $this->getPdo()->query('SELECT * FROM verification_codes');
         $this->assertInstanceOf(PDOStatement::class, $stmt);
         $rows = $stmt->fetchAll();
 

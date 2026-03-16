@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Integration\Generator;
@@ -29,7 +30,7 @@ class GenerationLockTest extends DatabaseTestCase
 
         $generator->generate(IdentityTypeEnum::User, 'user_lock', VerificationPurposeEnum::EmailVerification);
 
-        $stmt = $this->getPdo()->query("SELECT * FROM verification_generation_locks");
+        $stmt = $this->getPdo()->query('SELECT * FROM verification_generation_locks');
         $this->assertInstanceOf(PDOStatement::class, $stmt);
         $rows = $stmt->fetchAll();
 

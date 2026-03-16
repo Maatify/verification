@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Concurrency;
@@ -29,10 +30,10 @@ class GenerationRaceTest extends TestCase
             $this->pdo->exec("USE `{$this->db}`");
 
             // Clear tables instead of recreating
-            $this->pdo->exec("DELETE FROM `verification_codes`");
-            $this->pdo->exec("DELETE FROM `verification_generation_locks`");
+            $this->pdo->exec('DELETE FROM `verification_codes`');
+            $this->pdo->exec('DELETE FROM `verification_generation_locks`');
         } catch (\PDOException $e) {
-            $this->markTestSkipped("Database connection failed: " . $e->getMessage());
+            $this->markTestSkipped('Database connection failed: ' . $e->getMessage());
         }
     }
 
@@ -68,7 +69,11 @@ class GenerationRaceTest extends TestCase
                     $policyResolver = new \Maatify\Verification\Domain\Service\VerificationCodePolicyResolver();
                     $transactionManager = new \Maatify\Verification\Infrastructure\Transaction\PdoTransactionManager($pdo);
                     $generator = new \Maatify\Verification\Domain\Service\VerificationCodeGenerator(
-                        $repo, $policyResolver, $clock, $transactionManager, 'secret'
+                        $repo,
+                        $policyResolver,
+                        $clock,
+                        $transactionManager,
+                        'secret'
                     );
 
                     // Attempt to generate
@@ -98,14 +103,14 @@ class GenerationRaceTest extends TestCase
         // Connect again to verify
         $pdo = new PDO("mysql:host={$this->host};port={$this->port};dbname={$this->db}", $this->user, $this->pass);
 
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM verification_codes WHERE identity_id = ?");
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM verification_codes WHERE identity_id = ?');
         $stmt->execute([$identityId]);
-        $this->assertEquals(1, $stmt->fetchColumn(), "Only one code should be in the database");
+        $this->assertEquals(1, $stmt->fetchColumn(), 'Only one code should be in the database');
 
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM verification_generation_locks WHERE identity_id = ?");
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM verification_generation_locks WHERE identity_id = ?');
         $stmt->execute([$identityId]);
-        $this->assertEquals(1, $stmt->fetchColumn(), "One lock should exist");
+        $this->assertEquals(1, $stmt->fetchColumn(), 'One lock should exist');
 
-        $this->assertEquals(1, $successes, "Only one concurrent generation should succeed");
+        $this->assertEquals(1, $successes, 'Only one concurrent generation should succeed');
     }
 }

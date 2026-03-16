@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Integration\Validator;
@@ -34,7 +35,10 @@ class ValidateMultipleCodesTest extends DatabaseTestCase
             VerificationPurposeEnum::EmailVerification,
             hash_hmac('sha256', '111111', $secret),
             VerificationCodeStatus::ACTIVE,
-            0, 3, $clock->now()->modify('+15 minutes'), $clock->now()
+            0,
+            3,
+            $clock->now()->modify('+15 minutes'),
+            $clock->now()
         );
 
         $clock->modify('+2 minutes');
@@ -46,7 +50,10 @@ class ValidateMultipleCodesTest extends DatabaseTestCase
             VerificationPurposeEnum::EmailVerification,
             hash_hmac('sha256', '222222', $secret),
             VerificationCodeStatus::ACTIVE,
-            0, 3, $clock->now()->modify('+15 minutes'), $clock->now()
+            0,
+            3,
+            $clock->now()->modify('+15 minutes'),
+            $clock->now()
         );
 
         $repository->store($code1);
@@ -63,7 +70,7 @@ class ValidateMultipleCodesTest extends DatabaseTestCase
         $this->assertTrue($result->success);
 
         // Check DB state
-        $stmt = $this->getPdo()->query("SELECT status FROM verification_codes ORDER BY created_at ASC");
+        $stmt = $this->getPdo()->query('SELECT status FROM verification_codes ORDER BY created_at ASC');
         $this->assertInstanceOf(PDOStatement::class, $stmt);
         $rows = $stmt->fetchAll();
 

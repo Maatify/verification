@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests\Concurrency;
@@ -29,10 +30,10 @@ class ValidationRaceTest extends TestCase
             $this->pdo->exec("USE `{$this->db}`");
 
             // Clear tables instead of recreating
-            $this->pdo->exec("DELETE FROM `verification_codes`");
-            $this->pdo->exec("DELETE FROM `verification_generation_locks`");
+            $this->pdo->exec('DELETE FROM `verification_codes`');
+            $this->pdo->exec('DELETE FROM `verification_generation_locks`');
         } catch (\PDOException $e) {
-            $this->markTestSkipped("Database connection failed: " . $e->getMessage());
+            $this->markTestSkipped('Database connection failed: ' . $e->getMessage());
         }
     }
 
@@ -117,8 +118,8 @@ class ValidationRaceTest extends TestCase
             }
         }
 
-        $this->assertEquals(0, $errors, "No errors should occur during concurrent execution");
-        $this->assertEquals(1, $successes, "Only 1 validation should succeed");
-        $this->assertEquals($numWorkers - 1, $failures, ($numWorkers - 1) . " validations should fail");
+        $this->assertEquals(0, $errors, 'No errors should occur during concurrent execution');
+        $this->assertEquals(1, $successes, 'Only 1 validation should succeed');
+        $this->assertEquals($numWorkers - 1, $failures, ($numWorkers - 1) . ' validations should fail');
     }
 }
