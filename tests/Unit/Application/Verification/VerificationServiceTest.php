@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Application\Verification;
 
+use DateTimeImmutable;
+use Maatify\Verification\Application\Exception\VerificationGenerationBlockedException;
+use Maatify\Verification\Application\Exception\VerificationInternalException;
+use Maatify\Verification\Application\Exception\VerificationInvalidCodeException;
+use Maatify\Verification\Application\Exception\VerificationRateLimitException;
 use Maatify\Verification\Application\Verification\VerificationService;
 use Maatify\Verification\Domain\Contracts\VerificationCodeGeneratorInterface;
 use Maatify\Verification\Domain\Contracts\VerificationCodeValidatorInterface;
@@ -14,6 +19,7 @@ use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationCodeStatus;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 class VerificationServiceTest extends TestCase
 {
@@ -28,7 +34,10 @@ class VerificationServiceTest extends TestCase
         $this->generator = $this->createMock(VerificationCodeGeneratorInterface::class);
         $this->validator = $this->createMock(VerificationCodeValidatorInterface::class);
 
-        $this->service = new VerificationService($this->generator, $this->validator);
+        $this->service = new VerificationService(
+            $this->generator,
+            $this->validator
+        );
     }
 
     private function createDummyGeneratedCode(string $plainCode): GeneratedVerificationCode
@@ -42,8 +51,8 @@ class VerificationServiceTest extends TestCase
             VerificationCodeStatus::ACTIVE,
             0,
             3,
-            new \DateTimeImmutable('+1 hour'),
-            new \DateTimeImmutable()
+            new DateTimeImmutable('+1 hour'),
+            new DateTimeImmutable()
         );
 
         return new GeneratedVerificationCode($entity, $plainCode);
@@ -66,7 +75,7 @@ class VerificationServiceTest extends TestCase
         $this->assertSame('123456', $code);
     }
 
-    public function testVerifyCodeReturnsTrueOnValidCode(): void
+    public function testVerifyCodeReturnsNormallyOnValidCode(): void
     {
         $this->validator
             ->expects($this->once())
@@ -74,32 +83,31 @@ class VerificationServiceTest extends TestCase
             ->with(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification, '123456')
             ->willReturn(VerificationResult::success(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification));
 
-        $result = $this->service->verifyCode(
+        $this->service->verifyCode(
             IdentityTypeEnum::User,
             'user@example.com',
             VerificationPurposeEnum::EmailVerification,
             '123456'
         );
-
-        $this->assertTrue($result);
+        $this->assertTrue(true);
     }
 
-    public function testVerifyCodeReturnsFalseOnInvalidCode(): void
+    public function testVerifyCodeThrowsInvalidCodeOnFailure(): void
     {
         $this->validator
             ->expects($this->once())
             ->method('validate')
-            ->with(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification, 'wrong')
-            ->willReturn(VerificationResult::failure('Invalid code'));
+            ->willReturn(VerificationResult::failure('Invalid code.'));
 
-        $result = $this->service->verifyCode(
+        $this->expectException(VerificationInvalidCodeException::class);
+        $this->expectExceptionMessage('Invalid verification code.');
+
+        $this->service->verifyCode(
             IdentityTypeEnum::User,
             'user@example.com',
             VerificationPurposeEnum::EmailVerification,
             'wrong'
         );
-
-        $this->assertFalse($result);
     }
 
     public function testResendVerificationGeneratesNewCode(): void
@@ -117,5 +125,44 @@ class VerificationServiceTest extends TestCase
         );
 
         $this->assertSame('654321', $code);
+    }
+
+    public function testGenerationRateLimitException(): void
+    {
+        $this->generator
+            ->expects($this->once())
+            ->method('generate')
+            ->willThrowException(new RuntimeException('Too many codes generated in the current window.'));
+
+        $this->expectException(VerificationRateLimitException::class);
+        $this->expectExceptionMessage('Too many codes generated in the current window.');
+
+        $this->service->startVerification(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification);
+    }
+
+    public function testGenerationBlockedException(): void
+    {
+        $this->generator
+            ->expects($this->once())
+            ->method('generate')
+            ->willThrowException(new RuntimeException('Please wait before requesting a new code.'));
+
+        $this->expectException(VerificationGenerationBlockedException::class);
+        $this->expectExceptionMessage('Please wait before requesting a new code.');
+
+        $this->service->startVerification(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification);
+    }
+
+    public function testInternalException(): void
+    {
+        $this->generator
+            ->expects($this->once())
+            ->method('generate')
+            ->willThrowException(new RuntimeException('Failed to generate secure random code.'));
+
+        $this->expectException(VerificationInternalException::class);
+        $this->expectExceptionMessage('Failed to generate secure random code.');
+
+        $this->service->startVerification(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification);
     }
 }
