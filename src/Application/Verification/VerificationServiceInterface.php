@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Maatify\Verification\Application\Verification;
 
+use Maatify\Verification\Application\Exception\VerificationException;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
 
@@ -16,6 +17,7 @@ interface VerificationServiceInterface
      * @param string $identity
      * @param VerificationPurposeEnum $purpose
      * @return string The plain generated verification code.
+     * @throws VerificationException
      */
     public function startVerification(
         IdentityTypeEnum $identityType,
@@ -30,14 +32,15 @@ interface VerificationServiceInterface
      * @param string $identity
      * @param VerificationPurposeEnum $purpose
      * @param string $code
-     * @return bool True if verification succeeds, false otherwise.
+     * @return void
+     * @throws VerificationException
      */
     public function verifyCode(
         IdentityTypeEnum $identityType,
         string $identity,
         VerificationPurposeEnum $purpose,
         string $code
-    ): bool;
+    ): void;
 
     /**
      * Resends a verification code.
@@ -46,6 +49,7 @@ interface VerificationServiceInterface
      * @param string $identity
      * @param VerificationPurposeEnum $purpose
      * @return string The plain generated verification code.
+     * @throws VerificationException
      */
     public function resendVerification(
         IdentityTypeEnum $identityType,
