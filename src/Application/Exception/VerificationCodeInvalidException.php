@@ -9,7 +9,7 @@ use Maatify\Exceptions\Contracts\ErrorCodeInterface;
 use Maatify\Exceptions\Enum\ErrorCategoryEnum;
 use Maatify\Verification\Application\Enum\VerificationErrorCodeEnum;
 
-class VerificationInvalidCodeException extends VerificationException
+class VerificationCodeInvalidException extends VerificationException
 {
     public function __construct(string $message = 'Invalid verification code.')
     {
