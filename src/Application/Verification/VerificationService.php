@@ -68,6 +68,7 @@ readonly class VerificationService implements VerificationServiceInterface
     {
         $message = $e->getMessage();
 
+        // TODO: Replace message-based mapping with typed domain exceptions in future versions
         if ($message === 'Too many codes generated in the current window.') {
             throw new VerificationRateLimitException($message);
         }
