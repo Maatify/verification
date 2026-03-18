@@ -6,7 +6,7 @@ namespace Maatify\Verification\Application\Verification;
 
 use Maatify\Verification\Application\Exception\VerificationAttemptsExceededException;
 use Maatify\Verification\Application\Exception\VerificationCodeExpiredException;
-use Maatify\Verification\Application\Exception\VerificationCodeInvalidException;
+use Maatify\Verification\Application\Exception\VerificationInvalidCodeException;
 use Maatify\Verification\Application\Exception\VerificationGenerationBlockedException;
 use Maatify\Verification\Application\Exception\VerificationInternalException;
 use Maatify\Verification\Application\Exception\VerificationRateLimitException;
@@ -46,9 +46,6 @@ readonly class VerificationService implements VerificationServiceInterface
         try {
             $result = $this->validator->validate($identityType, $identity, $purpose, $code);
             if (!$result->success) {
-                // Since the domain currently doesn't throw specific exceptions for validation failures
-                // but returns them in the VerificationResult reason, we bridge it to the mapping logic
-                // by wrapping it in a RuntimeException.
                 throw new RuntimeException($result->reason);
             }
         } catch (RuntimeException $e) {
@@ -80,7 +77,11 @@ readonly class VerificationService implements VerificationServiceInterface
             throw new VerificationRateLimitException($e->getMessage());
         }
 
-        if (str_contains($message, 'too many codes') || str_contains($message, 'cooldown')) {
+        if (str_contains($message, 'too many codes')) {
+            throw new VerificationRateLimitException($e->getMessage());
+        }
+
+        if (str_contains($message, 'please wait')) {
             throw new VerificationGenerationBlockedException($e->getMessage());
         }
 
@@ -103,7 +104,7 @@ readonly class VerificationService implements VerificationServiceInterface
         }
 
         if (str_contains($message, 'invalid')) {
-            throw new VerificationCodeInvalidException($e->getMessage());
+            throw new VerificationInvalidCodeException($e->getMessage());
         }
 
         throw new VerificationInternalException($e->getMessage());

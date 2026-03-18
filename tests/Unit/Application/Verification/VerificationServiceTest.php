@@ -7,9 +7,9 @@ namespace Tests\Unit\Application\Verification;
 use DateTimeImmutable;
 use Maatify\Verification\Application\Exception\VerificationAttemptsExceededException;
 use Maatify\Verification\Application\Exception\VerificationCodeExpiredException;
-use Maatify\Verification\Application\Exception\VerificationCodeInvalidException;
 use Maatify\Verification\Application\Exception\VerificationGenerationBlockedException;
 use Maatify\Verification\Application\Exception\VerificationInternalException;
+use Maatify\Verification\Application\Exception\VerificationInvalidCodeException;
 use Maatify\Verification\Application\Exception\VerificationRateLimitException;
 use Maatify\Verification\Application\Verification\VerificationService;
 use Maatify\Verification\Domain\Contracts\VerificationCodeGeneratorInterface;
@@ -101,7 +101,7 @@ class VerificationServiceTest extends TestCase
             ->method('validate')
             ->willReturn(VerificationResult::failure('Invalid code.'));
 
-        $this->expectException(VerificationCodeInvalidException::class);
+        $this->expectException(VerificationInvalidCodeException::class);
         $this->expectExceptionMessage('Invalid code.');
 
         $this->service->verifyCode(
@@ -180,7 +180,7 @@ class VerificationServiceTest extends TestCase
         $this->assertSame('654321', $code);
     }
 
-    public function testGenerationRateLimitException(): void
+    public function testGenerationRateLimitExceptionForRedis(): void
     {
         $this->generator
             ->expects($this->once())
@@ -193,14 +193,14 @@ class VerificationServiceTest extends TestCase
         $this->service->startVerification(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification);
     }
 
-    public function testGenerationBlockedExceptionTooManyCodes(): void
+    public function testGenerationRateLimitExceptionTooManyCodes(): void
     {
         $this->generator
             ->expects($this->once())
             ->method('generate')
             ->willThrowException(new RuntimeException('Too many codes generated in the current window.'));
 
-        $this->expectException(VerificationGenerationBlockedException::class);
+        $this->expectException(VerificationRateLimitException::class);
 
         $this->service->startVerification(IdentityTypeEnum::User, 'user@example.com', VerificationPurposeEnum::EmailVerification);
     }
@@ -210,7 +210,7 @@ class VerificationServiceTest extends TestCase
         $this->generator
             ->expects($this->once())
             ->method('generate')
-            ->willThrowException(new RuntimeException('Please wait before requesting a new code (cooldown active).'));
+            ->willThrowException(new RuntimeException('Please wait before requesting a new code.'));
 
         $this->expectException(VerificationGenerationBlockedException::class);
 
