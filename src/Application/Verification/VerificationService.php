@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Maatify\Verification\Application\Verification;
 
+use Maatify\Verification\Application\Exception\VerificationAttemptsExceededException;
+use Maatify\Verification\Application\Exception\VerificationCodeExpiredException;
+use Maatify\Verification\Application\Exception\VerificationInvalidCodeException;
 use Maatify\Verification\Application\Exception\VerificationGenerationBlockedException;
 use Maatify\Verification\Application\Exception\VerificationInternalException;
-use Maatify\Verification\Application\Exception\VerificationInvalidCodeException;
 use Maatify\Verification\Application\Exception\VerificationRateLimitException;
 use Maatify\Verification\Domain\Contracts\VerificationCodeGeneratorInterface;
 use Maatify\Verification\Domain\Contracts\VerificationCodeValidatorInterface;
@@ -41,10 +43,13 @@ readonly class VerificationService implements VerificationServiceInterface
         VerificationPurposeEnum $purpose,
         string $code
     ): void {
-        $result = $this->validator->validate($identityType, $identity, $purpose, $code);
-
-        if (!$result->success) {
-            throw new VerificationInvalidCodeException('Invalid verification code.');
+        try {
+            $result = $this->validator->validate($identityType, $identity, $purpose, $code);
+            if (!$result->success) {
+                throw new RuntimeException($result->reason);
+            }
+        } catch (RuntimeException $e) {
+            $this->mapValidationException($e);
         }
     }
 
@@ -66,17 +71,42 @@ readonly class VerificationService implements VerificationServiceInterface
      */
     private function mapGenerationException(RuntimeException $e): void
     {
-        $message = $e->getMessage();
+        $message = strtolower($e->getMessage());
 
-        // TODO: Replace message-based mapping with typed domain exceptions in future versions
-        if ($message === 'Too many codes generated in the current window.') {
-            throw new VerificationRateLimitException($message);
+        if (str_contains($message, 'rate limit exceeded')) {
+            throw new VerificationRateLimitException($e->getMessage());
         }
 
-        if ($message === 'Please wait before requesting a new code.') {
-            throw new VerificationGenerationBlockedException($message);
+        if (str_contains($message, 'too many codes')) {
+            throw new VerificationRateLimitException($e->getMessage());
         }
 
-        throw new VerificationInternalException($message);
+        if (str_contains($message, 'please wait')) {
+            throw new VerificationGenerationBlockedException($e->getMessage());
+        }
+
+        throw new VerificationInternalException($e->getMessage());
+    }
+
+    /**
+     * @return never
+     */
+    private function mapValidationException(RuntimeException $e): void
+    {
+        $message = strtolower($e->getMessage());
+
+        if (str_contains($message, 'expired')) {
+            throw new VerificationCodeExpiredException($e->getMessage());
+        }
+
+        if (str_contains($message, 'attempts')) {
+            throw new VerificationAttemptsExceededException($e->getMessage());
+        }
+
+        if (str_contains($message, 'invalid')) {
+            throw new VerificationInvalidCodeException($e->getMessage());
+        }
+
+        throw new VerificationInternalException($e->getMessage());
     }
 }
