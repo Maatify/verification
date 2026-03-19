@@ -176,7 +176,7 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::EXPIRED);
         }
 
-        if ($row['attempts'] >= $row['max_attempts']) {
+        if ($row['attempts'] >= $row['max_attempts'] || $row['attempts'] + 1 >= $row['max_attempts']) {
             return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::ATTEMPTS_EXCEEDED);
         }
 
