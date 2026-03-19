@@ -16,7 +16,9 @@ use Maatify\Verification\Domain\DTO\VerificationCode;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationCodeStatus;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
-use RuntimeException;
+use Maatify\Verification\Domain\Exception\VerificationGenerationBlockedException;
+use Maatify\Verification\Domain\Exception\VerificationInternalDomainException;
+use Maatify\Verification\Domain\Exception\VerificationRateLimitExceededException;
 
 readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInterface
 {
@@ -46,7 +48,7 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
             $countInWindow = $this->repository->countActiveInWindow($identityType, $identityId, $purpose, $since);
 
             if ($countInWindow >= $policy->maxCodesPerWindow) {
-                throw new RuntimeException('Too many codes generated in the current window.');
+                throw new VerificationRateLimitExceededException('Too many codes generated in the current window.');
             }
 
             // 3. Generation Cooldown & Multi-Code Window
@@ -61,7 +63,7 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
                 $secondsSinceLastCode = $now->getTimestamp() - $latestCode->createdAt->getTimestamp();
 
                 if ($secondsSinceLastCode < $policy->resendCooldownSeconds) {
-                    throw new RuntimeException('Please wait before requesting a new code.');
+                    throw new VerificationGenerationBlockedException('Please wait before requesting a new code.');
                 }
             }
 
@@ -85,7 +87,7 @@ readonly class VerificationCodeGenerator implements VerificationCodeGeneratorInt
             try {
                 $plainCode = (string)random_int(100000, 999999);
             } catch (Exception $e) {
-                throw new RuntimeException('Failed to generate secure random code.', 0, $e);
+                throw new VerificationInternalDomainException('Failed to generate secure random code.', 0, $e);
             }
 
             // 5. Hash

@@ -116,7 +116,8 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
         VerificationPurposeEnum $purpose,
         string $codeHash,
         ?string $usedIp = null
-    ): bool {
+    ): \Maatify\Verification\Domain\DTO\VerificationUseResult {
+        $now = $this->clock->now()->format('Y-m-d H:i:s');
         $stmt = $this->pdo->prepare("
             UPDATE verification_codes
             SET status = 'used', used_ip = :used_ip, used_at = :now
@@ -141,10 +142,45 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
             'purpose'       => $purpose->value,
             'code_hash'     => $codeHash,
             'used_ip'       => $usedIp,
-            'now'           => $this->clock->now()->format('Y-m-d H:i:s'),
+            'now'           => $now,
         ]);
 
-        return $stmt->rowCount() === 1;
+        if ($stmt->rowCount() === 1) {
+            return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::SUCCESS);
+        }
+
+        // If the update affected 0 rows, the code was either wrong, expired, or locked out.
+        // We do a post-failure lookup to determine the deterministic reason for the domain.
+        // Since the markUsed attempt already failed, this lookup doesn't break atomic validation security.
+        $stmtLookup = $this->pdo->prepare("
+            SELECT attempts, max_attempts, expires_at, status FROM verification_codes
+            WHERE identity_type = :identity_type
+              AND identity_id = :identity_id
+              AND purpose = :purpose
+            ORDER BY created_at DESC
+            LIMIT 1
+        ");
+        $stmtLookup->execute([
+            'identity_type' => $identityType->value,
+            'identity_id'   => $identityId,
+            'purpose'       => $purpose->value,
+        ]);
+
+        $row = $stmtLookup->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::INVALID_CODE);
+        }
+
+        if ($row['status'] === 'expired' || $row['expires_at'] < $now) {
+            return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::EXPIRED);
+        }
+
+        if ($row['attempts'] >= $row['max_attempts']) {
+            return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::ATTEMPTS_EXCEEDED);
+        }
+
+        return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::INVALID_CODE);
     }
 
     public function expire(int $codeId): void

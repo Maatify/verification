@@ -99,7 +99,7 @@ class VerificationServiceTest extends TestCase
         $this->validator
             ->expects($this->once())
             ->method('validate')
-            ->willReturn(VerificationResult::failure('Invalid code.'));
+            ->willThrowException(new \Maatify\Verification\Domain\Exception\InvalidVerificationCodeException('Invalid code.'));
 
         $this->expectException(VerificationInvalidCodeException::class);
         $this->expectExceptionMessage('Invalid code.');
@@ -117,7 +117,7 @@ class VerificationServiceTest extends TestCase
         $this->validator
             ->expects($this->once())
             ->method('validate')
-            ->willReturn(VerificationResult::failure('Verification code has expired.'));
+            ->willThrowException(new \Maatify\Verification\Domain\Exception\VerificationCodeExpiredException('Verification code has expired.'));
 
         $this->expectException(VerificationCodeExpiredException::class);
 
@@ -134,7 +134,7 @@ class VerificationServiceTest extends TestCase
         $this->validator
             ->expects($this->once())
             ->method('validate')
-            ->willReturn(VerificationResult::failure('Maximum attempts exceeded.'));
+            ->willThrowException(new \Maatify\Verification\Domain\Exception\VerificationAttemptsExceededException('Maximum attempts exceeded.'));
 
         $this->expectException(VerificationAttemptsExceededException::class);
 
@@ -151,7 +151,7 @@ class VerificationServiceTest extends TestCase
         $this->validator
             ->expects($this->once())
             ->method('validate')
-            ->willThrowException(new RuntimeException('Database failure'));
+            ->willThrowException(new \Maatify\Verification\Domain\Exception\VerificationInternalDomainException('Database failure'));
 
         $this->expectException(VerificationInternalException::class);
 
@@ -185,7 +185,7 @@ class VerificationServiceTest extends TestCase
         $this->generator
             ->expects($this->once())
             ->method('generate')
-            ->willThrowException(new RuntimeException('Rate limit exceeded for window 1h'));
+            ->willThrowException(new \Maatify\Verification\Domain\Exception\VerificationRateLimitExceededException('Rate limit exceeded for window 1h'));
 
         $this->expectException(VerificationRateLimitException::class);
         $this->expectExceptionMessage('Rate limit exceeded for window 1h');
@@ -198,7 +198,7 @@ class VerificationServiceTest extends TestCase
         $this->generator
             ->expects($this->once())
             ->method('generate')
-            ->willThrowException(new RuntimeException('Too many codes generated in the current window.'));
+            ->willThrowException(new \Maatify\Verification\Domain\Exception\VerificationRateLimitExceededException('Too many codes generated in the current window.'));
 
         $this->expectException(VerificationRateLimitException::class);
 
@@ -210,7 +210,7 @@ class VerificationServiceTest extends TestCase
         $this->generator
             ->expects($this->once())
             ->method('generate')
-            ->willThrowException(new RuntimeException('Please wait before requesting a new code.'));
+            ->willThrowException(new \Maatify\Verification\Domain\Exception\VerificationGenerationBlockedException('Please wait before requesting a new code.'));
 
         $this->expectException(VerificationGenerationBlockedException::class);
 
@@ -222,7 +222,7 @@ class VerificationServiceTest extends TestCase
         $this->generator
             ->expects($this->once())
             ->method('generate')
-            ->willThrowException(new RuntimeException('Failed to generate secure random code.'));
+            ->willThrowException(new \Maatify\Verification\Domain\Exception\VerificationInternalDomainException('Failed to generate secure random code.'));
 
         $this->expectException(VerificationInternalException::class);
 

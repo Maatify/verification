@@ -14,7 +14,8 @@ readonly class VerificationResult
         public string $reason = '',
         public ?IdentityTypeEnum $identityType = null,
         public ?string $identityId = null,
-        public ?VerificationPurposeEnum $purpose = null
+        public ?VerificationPurposeEnum $purpose = null,
+        public ?\Throwable $exception = null
     ) {
     }
 
@@ -23,8 +24,8 @@ readonly class VerificationResult
         return new self(true, '', $identityType, $identityId, $purpose);
     }
 
-    public static function failure(string $reason): self
+    public static function failure(string $reason, ?\Throwable $exception = null): self
     {
-        return new self(false, $reason);
+        return new self(false, $reason, null, null, null, $exception);
     }
 }
