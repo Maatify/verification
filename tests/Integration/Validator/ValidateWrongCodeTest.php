@@ -44,21 +44,23 @@ class ValidateWrongCodeTest extends DatabaseTestCase
         );
         $repository->store($code);
 
-        $result = $validator->validate(
-            IdentityTypeEnum::User,
-            'user2',
-            VerificationPurposeEnum::EmailVerification,
-            '654321' // Wrong code
-        );
+        $this->expectException(\Maatify\Verification\Domain\Exception\InvalidVerificationCodeException::class);
 
-        $this->assertFalse($result->success);
+        try {
+            $validator->validate(
+                IdentityTypeEnum::User,
+                'user2',
+                VerificationPurposeEnum::EmailVerification,
+                '654321' // Wrong code
+            );
+        } finally {
+            $stmt = $this->getPdo()->query('SELECT attempts, status FROM verification_codes');
+            $this->assertInstanceOf(PDOStatement::class, $stmt);
+            $row = $stmt->fetch();
 
-        $stmt = $this->getPdo()->query('SELECT attempts, status FROM verification_codes');
-        $this->assertInstanceOf(PDOStatement::class, $stmt);
-        $row = $stmt->fetch();
-
-        $this->assertIsArray($row);
-        $this->assertEquals(1, $row['attempts']);
-        $this->assertEquals('active', $row['status']);
+            $this->assertIsArray($row);
+            $this->assertEquals(1, $row['attempts']);
+            $this->assertEquals('active', $row['status']);
+        }
     }
 }

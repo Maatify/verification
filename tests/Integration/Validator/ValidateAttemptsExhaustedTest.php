@@ -45,22 +45,25 @@ class ValidateAttemptsExhaustedTest extends DatabaseTestCase
         $repository->store($code);
 
         // This will be the 3rd failed attempt
-        $result = $validator->validate(
-            IdentityTypeEnum::User,
-            'user4',
-            VerificationPurposeEnum::EmailVerification,
-            '999999' // Wrong code
-        );
+        $this->expectException(\Maatify\Verification\Domain\Exception\VerificationAttemptsExceededException::class);
 
-        $this->assertFalse($result->success);
+        try {
+            $validator->validate(
+                IdentityTypeEnum::User,
+                'user4',
+                VerificationPurposeEnum::EmailVerification,
+                '999999' // Wrong code
+            );
+        } finally {
+            // Verify marked as expired
+            $stmt = $this->getPdo()->query('SELECT status, attempts FROM verification_codes');
+            $this->assertInstanceOf(PDOStatement::class, $stmt);
+            $row = $stmt->fetch();
 
-        // Verify marked as expired
-        $stmt = $this->getPdo()->query('SELECT status, attempts FROM verification_codes');
-        $this->assertInstanceOf(PDOStatement::class, $stmt);
-        $row = $stmt->fetch();
+            $this->assertIsArray($row);
+            $this->assertEquals(3, $row['attempts']);
+            $this->assertEquals('expired', $row['status']);
+        }
 
-        $this->assertIsArray($row);
-        $this->assertEquals(3, $row['attempts']);
-        $this->assertEquals('expired', $row['status']);
     }
 }
