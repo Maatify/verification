@@ -38,11 +38,11 @@ readonly class VerificationService implements VerificationServiceInterface
             $generated = $this->generator->generate($identityType, $identity, $purpose);
             return $generated->plainCode;
         } catch (DomainRateLimitExceededException $e) {
-            throw new VerificationRateLimitException($e->getMessage(), 0, $e);
+            throw new VerificationRateLimitException($e->getMessage());
         } catch (DomainGenerationBlockedException $e) {
-            throw new VerificationGenerationBlockedException($e->getMessage(), 0, $e);
+            throw new VerificationGenerationBlockedException($e->getMessage());
         } catch (VerificationDomainException $e) {
-            throw new VerificationInternalException($e->getMessage(), 0, $e);
+            throw new VerificationInternalException($e->getMessage());
         }
     }
 
@@ -55,13 +55,13 @@ readonly class VerificationService implements VerificationServiceInterface
         try {
             $this->validator->validate($identityType, $identity, $purpose, $code);
         } catch (DomainCodeExpiredException $e) {
-            throw new VerificationCodeExpiredException($e->getMessage(), 0, $e);
+            throw new VerificationCodeExpiredException($e->getMessage());
         } catch (DomainAttemptsExceededException $e) {
-            throw new VerificationAttemptsExceededException($e->getMessage(), 0, $e);
+            throw new VerificationAttemptsExceededException($e->getMessage());
         } catch (InvalidVerificationCodeException $e) {
-            throw new VerificationInvalidCodeException($e->getMessage(), 0, $e);
+            throw new VerificationInvalidCodeException($e->getMessage());
         } catch (VerificationDomainException $e) {
-            throw new VerificationInternalException($e->getMessage(), 0, $e);
+            throw new VerificationInternalException($e->getMessage());
         }
     }
 
@@ -74,11 +74,11 @@ readonly class VerificationService implements VerificationServiceInterface
             $generated = $this->generator->generate($identityType, $identity, $purpose);
             return $generated->plainCode;
         } catch (DomainRateLimitExceededException $e) {
-            throw new VerificationRateLimitException($e->getMessage(), 0, $e);
+            throw new VerificationRateLimitException($e->getMessage());
         } catch (DomainGenerationBlockedException $e) {
-            throw new VerificationGenerationBlockedException($e->getMessage(), 0, $e);
+            throw new VerificationGenerationBlockedException($e->getMessage());
         } catch (VerificationDomainException $e) {
-            throw new VerificationInternalException($e->getMessage(), 0, $e);
+            throw new VerificationInternalException($e->getMessage());
         }
     }
 }

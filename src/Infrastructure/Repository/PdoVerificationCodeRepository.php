@@ -168,15 +168,24 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
 
         $row = $stmtLookup->fetch(PDO::FETCH_ASSOC);
 
-        if (!$row) {
+        if (!is_array($row)) {
             return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::INVALID_CODE);
         }
 
-        if ($row['status'] === 'expired' || $row['expires_at'] < $now) {
+        /** @var string $status */
+        $status = $row['status'];
+        /** @var string $expiresAt */
+        $expiresAt = $row['expires_at'];
+        /** @var int $attempts */
+        $attempts = (int) $row['attempts'];
+        /** @var int $maxAttempts */
+        $maxAttempts = (int) $row['max_attempts'];
+
+        if ($status === 'expired' || $expiresAt < $now) {
             return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::EXPIRED);
         }
 
-        if ($row['attempts'] >= $row['max_attempts'] || $row['attempts'] + 1 >= $row['max_attempts']) {
+        if ($attempts >= $maxAttempts || $attempts + 1 >= $maxAttempts) {
             return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::ATTEMPTS_EXCEEDED);
         }
 
