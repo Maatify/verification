@@ -7,9 +7,9 @@ namespace Maatify\Verification\Infrastructure\RateLimiter;
 use Maatify\Verification\Domain\Contracts\VerificationRateLimiterInterface;
 use Maatify\Verification\Domain\Enum\IdentityTypeEnum;
 use Maatify\Verification\Domain\Enum\VerificationPurposeEnum;
+use Maatify\Verification\Domain\Exception\VerificationRateLimitExceededException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use RuntimeException;
 use Redis;
 
 class RedisRateLimiter implements VerificationRateLimiterInterface
@@ -82,7 +82,7 @@ class RedisRateLimiter implements VerificationRateLimiterInterface
 
                 // Check if limits exceeded
                 if (isset($this->limits[$field]) && $currentHits > $this->limits[$field]) {
-                    throw new RuntimeException(sprintf('Rate limit exceeded for window %s', $field));
+                    throw new VerificationRateLimitExceededException(sprintf('Rate limit exceeded for window %s', $field));
                 }
                 $i++;
             }

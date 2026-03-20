@@ -116,35 +116,84 @@ readonly class PdoVerificationCodeRepository implements VerificationCodeReposito
         VerificationPurposeEnum $purpose,
         string $codeHash,
         ?string $usedIp = null
-    ): bool {
-        $stmt = $this->pdo->prepare("
-            UPDATE verification_codes
-            SET status = 'used', used_ip = :used_ip, used_at = :now
-            WHERE id = (
-                SELECT id FROM (
-                    SELECT id FROM verification_codes
-                    WHERE identity_type = :identity_type
-                      AND identity_id = :identity_id
-                      AND purpose = :purpose
-                      AND code_hash = :code_hash
-                      AND status = 'active'
-                      AND expires_at >= :now
-                      AND attempts < max_attempts
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                ) as target_row
-            )
-        ");
-        $stmt->execute([
-            'identity_type' => $identityType->value,
-            'identity_id'   => $identityId,
-            'purpose'       => $purpose->value,
-            'code_hash'     => $codeHash,
-            'used_ip'       => $usedIp,
-            'now'           => $this->clock->now()->format('Y-m-d H:i:s'),
-        ]);
+    ): \Maatify\Verification\Domain\DTO\VerificationUseResult {
+        $now = $this->clock->now()->format('Y-m-d H:i:s');
 
-        return $stmt->rowCount() === 1;
+        try {
+            $this->pdo->beginTransaction();
+
+            $stmtLookup = $this->pdo->prepare("
+                SELECT id, code_hash, attempts, max_attempts, expires_at, status FROM verification_codes
+                WHERE identity_type = :identity_type
+                  AND identity_id = :identity_id
+                  AND purpose = :purpose
+                ORDER BY created_at DESC
+                LIMIT 1
+                FOR UPDATE
+            ");
+            $stmtLookup->execute([
+                'identity_type' => $identityType->value,
+                'identity_id'   => $identityId,
+                'purpose'       => $purpose->value,
+            ]);
+
+            $row = $stmtLookup->fetch(PDO::FETCH_ASSOC);
+
+            if (!is_array($row)) {
+                $this->pdo->rollBack();
+                return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::INVALID_CODE);
+            }
+
+            /** @var string $status */
+            $status = $row['status'];
+            /** @var string $expiresAt */
+            $expiresAt = $row['expires_at'];
+            /** @var int $attempts */
+            $attempts = (int) $row['attempts'];
+            /** @var int $maxAttempts */
+            $maxAttempts = (int) $row['max_attempts'];
+            /** @var string $rowHash */
+            $rowHash = $row['code_hash'];
+
+            if ($status !== 'active') {
+                $this->pdo->rollBack();
+                return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::EXPIRED);
+            }
+
+            if ($expiresAt < $now) {
+                $this->pdo->rollBack();
+                return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::EXPIRED);
+            }
+
+            if ($attempts >= $maxAttempts || $attempts + 1 >= $maxAttempts) {
+                $this->pdo->rollBack();
+                return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::ATTEMPTS_EXCEEDED);
+            }
+
+            if (!hash_equals($rowHash, $codeHash)) {
+                $this->pdo->rollBack();
+                return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::INVALID_CODE);
+            }
+
+            $stmtUpdate = $this->pdo->prepare("
+                UPDATE verification_codes
+                SET status = 'used', used_ip = :used_ip, used_at = :now
+                WHERE id = :id
+            ");
+            $stmtUpdate->execute([
+                'id'      => $row['id'],
+                'used_ip' => $usedIp,
+                'now'     => $now,
+            ]);
+
+            $this->pdo->commit();
+            return new \Maatify\Verification\Domain\DTO\VerificationUseResult(\Maatify\Verification\Domain\Enum\VerificationUseStatus::SUCCESS);
+        } catch (\Exception $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 
     public function expire(int $codeId): void

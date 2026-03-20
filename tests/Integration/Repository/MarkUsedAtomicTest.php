@@ -35,7 +35,7 @@ class MarkUsedAtomicTest extends DatabaseTestCase
 
         $repository->store($code);
 
-        $success = $repository->markUsed(
+        $result = $repository->markUsed(
             IdentityTypeEnum::User,
             'user123',
             VerificationPurposeEnum::EmailVerification,
@@ -43,7 +43,7 @@ class MarkUsedAtomicTest extends DatabaseTestCase
             '192.168.1.1'
         );
 
-        $this->assertTrue($success);
+        $this->assertSame(\Maatify\Verification\Domain\Enum\VerificationUseStatus::SUCCESS, $result->status);
 
         $stmt = $this->getPdo()->query('SELECT * FROM verification_codes');
         $this->assertInstanceOf(PDOStatement::class, $stmt);
@@ -54,13 +54,13 @@ class MarkUsedAtomicTest extends DatabaseTestCase
         $this->assertNotNull($rows[0]['used_at']);
 
         // Marking used again should fail
-        $success2 = $repository->markUsed(
+        $result2 = $repository->markUsed(
             IdentityTypeEnum::User,
             'user123',
             VerificationPurposeEnum::EmailVerification,
             'hash123',
             '192.168.1.1'
         );
-        $this->assertFalse($success2);
+        $this->assertNotSame(\Maatify\Verification\Domain\Enum\VerificationUseStatus::SUCCESS, $result2->status);
     }
 }

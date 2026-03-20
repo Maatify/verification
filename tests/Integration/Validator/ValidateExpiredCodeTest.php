@@ -43,13 +43,13 @@ class ValidateExpiredCodeTest extends DatabaseTestCase
         );
         $repository->store($code);
 
-        $result = $validator->validate(
+        $this->expectException(\Maatify\Verification\Domain\Exception\VerificationCodeExpiredException::class);
+
+        $validator->validate(
             IdentityTypeEnum::User,
             'user3',
             VerificationPurposeEnum::EmailVerification,
             $plainCode
         );
-
-        $this->assertFalse($result->success);
     }
 }

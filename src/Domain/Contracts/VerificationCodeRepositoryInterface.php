@@ -26,7 +26,7 @@ interface VerificationCodeRepositoryInterface
         VerificationPurposeEnum $purpose,
         string $codeHash,
         ?string $usedIp = null
-    ): bool;
+    ): \Maatify\Verification\Domain\DTO\VerificationUseResult;
 
     public function expire(int $codeId): void;
 

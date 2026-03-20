@@ -53,12 +53,13 @@ class ValidateReplayAttackTest extends DatabaseTestCase
         $this->assertTrue($result1->success);
 
         // Second validation with the same code should fail
-        $result2 = $validator->validate(
+        $this->expectException(\Maatify\Verification\Domain\Exception\InvalidVerificationCodeException::class);
+
+        $validator->validate(
             IdentityTypeEnum::User,
             'user5',
             VerificationPurposeEnum::EmailVerification,
             $plainCode
         );
-        $this->assertFalse($result2->success);
     }
 }

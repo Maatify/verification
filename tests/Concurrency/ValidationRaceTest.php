@@ -85,14 +85,16 @@ class ValidationRaceTest extends TestCase
                     $validator = new \Maatify\Verification\Domain\Service\VerificationCodeValidator($repo, $secret);
 
                     // Attempt to validate
-                    $result = $validator->validate(
+                    $validator->validate(
                         \Maatify\Verification\Domain\Enum\IdentityTypeEnum::User,
                         $identityId,
                         \Maatify\Verification\Domain\Enum\VerificationPurposeEnum::EmailVerification,
                         $plainCode
                     );
 
-                    exit($result->success ? 0 : 1);
+                    exit(0);
+                } catch (\Maatify\Verification\Domain\Exception\VerificationDomainException $e) {
+                    exit(1);
                 } catch (\Exception $e) {
                     exit(2);
                 }
